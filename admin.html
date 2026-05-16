@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Etalase Store</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #0f0f1a; color: #e0e0e0; }
+        
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0f0f1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .login-card {
+            background: rgba(255,255,255,0.95);
+            padding: 2rem;
+            border-radius: 32px;
+            width: 380px;
+            text-align: center;
+        }
+        .login-card h2 { color: #1a1a2e; margin-bottom: 1rem; }
+        .login-card input {
+            width: 100%;
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+        }
+        .login-card button {
+            width: 100%;
+            padding: 0.8rem;
+            background: linear-gradient(135deg, #ee4d2d, #ff6b4a);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 0.5rem;
+        }
+        .login-card .link-btn {
+            background: transparent;
+            color: #ee4d2d;
+            margin-top: 0;
+        }
+        .error-msg { color: #d32f2f; font-size: 0.8rem; margin-top: 0.5rem; }
+        .success-msg { color: #00aa5b; font-size: 0.8rem; margin-top: 0.5rem; }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .modal-content {
+            background: #1a1a2e;
+            padding: 2rem;
+            border-radius: 24px;
+            width: 400px;
+            max-width: 90%;
+            text-align: center;
+        }
+        .modal-content input {
+            width: 100%;
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            color: white;
+        }
+        .modal-content button {
+            width: 100%;
+            padding: 0.8rem;
+            background: linear-gradient(135deg, #ee4d2d, #ff6b4a);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 0.5rem;
+        }
+        .modal-content h3 { margin-bottom: 1rem; }
+        .close-modal { 
+            float: right; 
+            cursor: pointer; 
+            font-size: 1.5rem; 
+            color: #aaa;
+        }
+        .close-modal:hover { color: white; }
+        
+        .admin-container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+        }
+        .admin-header h1 {
+            background: linear-gradient(135deg, #ee4d2d, #ff6b4a, #25F4EE);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-size: 1.5rem;
+        }
+        .user-info { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .user-email { background: rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 40px; font-size: 0.8rem; }
+        .logout-btn, .share-btn, .delete-account-btn {
+            background: rgba(255,255,255,0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
+            cursor: pointer;
+            border: none;
+            color: white;
+        }
+        .share-btn { background: #2196f3; }
+        .delete-account-btn { background: #d32f2f; }
+        
+        .settings-section, .category-section, .form-section, .products-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 24px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .settings-grid, .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .settings-group, .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .settings-group label, .form-group label { font-size: 0.85rem; color: #aaa; }
+        .settings-group input, .settings-group textarea, .form-group input, .form-group select {
+            padding: 0.7rem;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            color: white;
+        }
+        .settings-group textarea { resize: vertical; min-height: 80px; }
+        
+        .category-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .category-tag {
+            background: rgba(255,255,255,0.1);
+            padding: 0.3rem 1rem;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .category-tag button {
+            background: none;
+            border: none;
+            color: #ff6b4a;
+            cursor: pointer;
+        }
+        .add-category {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        .add-category input {
+            flex: 1;
+            padding: 0.7rem;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            color: white;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            padding: 1rem;
+            border-radius: 16px;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #00aa5b, #00c853);
+            color: white;
+            border: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            overflow-x: auto;
+            display: block;
+        }
+        .products-table th, .products-table td {
+            padding: 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .btn-edit, .btn-delete {
+            padding: 0.3rem 0.8rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-edit { background: #ffa500; color: #1a1a2e; }
+        .btn-delete { background: #d32f2f; color: white; }
+        .preview-btn {
+            background: #2196f3;
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #00aa5b;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            z-index: 9999;
+            animation: slideIn 0.3s ease;
+        }
+        .toast.error { background: #d32f2f; }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @media (max-width: 768px) { 
+            .admin-container { padding: 1rem; }
+            .products-table { font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="loadingScreen" class="loading-screen">
+    <div style="text-align:center;">
+        <i class="fas fa-spinner fa-spin" style="font-size:3rem;"></i>
+        <p style="margin-top:1rem;">Memuat...</p>
+    </div>
+</div>
+
+<div id="loginScreen" class="login-screen" style="display: none;">
+    <div class="login-card">
+        <h2><i class="fas fa-store"></i> Admin Etalase</h2>
+        <div id="loginForm">
+            <input type="email" id="loginEmail" placeholder="Email">
+            <input type="password" id="loginPassword" placeholder="Password">
+            <button onclick="doLogin()">Login</button>
+            <button class="link-btn" onclick="showRegister()">Belum punya akun? Daftar</button>
+            <button class="link-btn" onclick="showForgotPassword()">Lupa Password?</button>
+        </div>
+        <div id="registerForm" style="display:none;">
+            <input type="text" id="regName" placeholder="Nama Toko">
+            <input type="email" id="regEmail" placeholder="Email">
+            <input type="password" id="regPassword" placeholder="Password (min 6 karakter)">
+            <button onclick="doRegister()">Daftar</button>
+            <button class="link-btn" onclick="showLogin()">Kembali ke Login</button>
+        </div>
+        <div id="loginMsg" class="error-msg"></div>
+    </div>
+</div>
+
+<div id="adminPanel" style="display: none;">
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1><i class="fas fa-crown"></i> Admin Panel - <span id="storeTitleDisplay">Etalase Saya</span></h1>
+            <div class="user-info">
+                <span class="user-email" id="userEmailDisplay"></span>
+                <button class="share-btn" onclick="sharePublicLink()"><i class="fas fa-share-alt"></i> Bagikan Link Toko</button>
+                <button class="delete-account-btn" onclick="showDeleteAccountModal()"><i class="fas fa-trash-alt"></i> Hapus Akun</button>
+                <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3><i class="fas fa-sliders-h"></i> Pengaturan Tampilan Toko</h3>
+            <div class="settings-grid">
+                <div class="settings-group">
+                    <label>Title Pojok Kiri (Logo Toko)</label>
+                    <input type="text" id="leftTitle" placeholder="Nama toko di pojok kiri">
+                </div>
+                <div class="settings-group">
+                    <label>Title Tengah (Hero Section)</label>
+                    <input type="text" id="centerTitle" placeholder="Judul besar di tengah">
+                </div>
+                <div class="settings-group">
+                    <label>Deskripsi Toko</label>
+                    <textarea id="storeDesc" placeholder="Deskripsi toko Anda"></textarea>
+                </div>
+            </div>
+            <button class="btn-primary" onclick="saveDisplaySettings()"><i class="fas fa-save"></i> Simpan Pengaturan</button>
+        </div>
+
+        <div class="category-section">
+            <h3><i class="fas fa-tags"></i> Manajemen Kategori</h3>
+            <div class="category-list" id="categoryList"></div>
+            <div class="add-category">
+                <input type="text" id="newCategory" placeholder="Kategori baru...">
+                <button class="btn-primary" onclick="addCategory()" style="margin:0;">+ Tambah</button>
+            </div>
+        </div>
+
+        <div class="stats-grid" id="statsContainer"></div>
+
+        <div class="form-section">
+            <h3><i class="fas fa-plus-circle"></i> <span id="formTitle">Tambah Produk Baru</span></h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Nama Produk</label>
+                    <input type="text" id="productName" placeholder="Nama produk">
+                </div>
+                <div class="form-group">
+                    <label>Kategori</label>
+                    <select id="productCategory"></select>
+                </div>
+                <div class="form-group">
+                    <label>URL Gambar</label>
+                    <input type="text" id="productImage" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>Platform</label>
+                    <select id="productPlatform">
+                        <option value="shopee">🛒 Shopee</option>
+                        <option value="tiktok">🎵 TikTok</option>
+                        <option value="lynk">🔗 Lynk.id</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Link Affiliate</label>
+                    <input type="text" id="productLink" placeholder="https://...">
+                </div>
+            </div>
+            <button class="btn-primary" onclick="saveProduct()"><i class="fas fa-save"></i> Simpan Produk</button>
+            <button id="cancelBtn" class="btn-primary" style="background:#666; display:none; margin-left:1rem;" onclick="cancelEdit()">Batal Edit</button>
+        </div>
+
+        <button class="preview-btn" onclick="openPreview()"><i class="fas fa-eye"></i> Preview Toko Publik</button>
+
+        <div class="products-section">
+            <h3><i class="fas fa-list"></i> Daftar Produk Saya</h3>
+            <div style="overflow-x: auto;">
+                <table class="products-table">
+                    <thead><tr><th>Gambar</th><th>Nama</th><th>Kategori</th><th>Platform</th><th>Aksi</th></tr></thead>
+                    <tbody id="productsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL Lupa Password -->
+<div id="forgotPasswordModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeForgotPasswordModal()">&times;</span>
+        <h3><i class="fas fa-key"></i> Lupa Password</h3>
+        <p style="margin-bottom: 1rem; font-size: 0.85rem;">Masukkan email Anda, kami akan kirimkan link reset password</p>
+        <input type="email" id="resetEmail" placeholder="Email Anda">
+        <button onclick="sendPasswordReset()">Kirim Email Reset Password</button>
+        <div id="resetMsg" style="font-size: 0.8rem; margin-top: 0.5rem;"></div>
+    </div>
+</div>
+
+<!-- MODAL Hapus Akun -->
+<div id="deleteAccountModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeDeleteAccountModal()">&times;</span>
+        <h3><i class="fas fa-exclamation-triangle"></i> Hapus Akun</h3>
+        <p style="margin-bottom: 1rem; color: #ff6b4a;">⚠️ Peringatan: Tindakan ini tidak dapat dibatalkan!</p>
+        <p style="margin-bottom: 1rem; font-size: 0.85rem;">Semua produk dan data toko akan hilang permanen.</p>
+        <p style="margin-bottom: 0.5rem; font-size: 0.85rem;">Masukkan password Anda untuk konfirmasi:</p>
+        <input type="password" id="confirmPassword" placeholder="Password">
+        <button onclick="deleteAccount()" style="background: #d32f2f;">Hapus Akun Permanen</button>
+        <div id="deleteMsg" style="font-size: 0.8rem; margin-top: 0.5rem;"></div>
+    </div>
+</div>
+
+<script>
+    // ========== FIREBASE CONFIG ==========
+    const firebaseConfig = {
+        apiKey: "AIzaSyD0rp7Rqg8avy4WHL-ZJqqGfwoWMvBMSuY",
+        authDomain: "etalase-affiliate.firebaseapp.com",
+        projectId: "etalase-affiliate",
+        storageBucket: "etalase-affiliate.firebasestorage.app",
+        messagingSenderId: "419139689572",
+        appId: "1:419139689572:web:dd808729a2efb2cdbf9371"
+    };
+    
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    
+    // State
+    let currentUser = null;
+    let editingId = null;
+    let categories = ["Elektronik", "Fashion", "Rumah Tangga", "Olahraga", "Kecantikan", "Makanan"];
+    let products = [];
+    let storeSettings = {
+        leftTitle: "Etalase Belanja",
+        centerTitle: "✨ Belanja Produk Berkualitas ✨",
+        storeDesc: "Pilih platform favoritmu, klik produk untuk lihat harga asli"
+    };
+    
+    function showToast(message, isError = false) {
+        const toast = document.createElement("div");
+        toast.className = "toast" + (isError ? " error" : "");
+        toast.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i> ${message}`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+    
+    // ========== FITUR LUPA PASSWORD ==========
+    function showForgotPassword() {
+        document.getElementById("forgotPasswordModal").style.display = "flex";
+        document.getElementById("resetEmail").value = "";
+        document.getElementById("resetMsg").innerHTML = "";
+    }
+    
+    function closeForgotPasswordModal() {
+        document.getElementById("forgotPasswordModal").style.display = "none";
+    }
+    
+    async function sendPasswordReset() {
+        const email = document.getElementById("resetEmail").value.trim();
+        if(!email) {
+            document.getElementById("resetMsg").innerHTML = "Masukkan email Anda!";
+            document.getElementById("resetMsg").style.color = "#d32f2f";
+            return;
+        }
+        
+        try {
+            await auth.sendPasswordResetEmail(email);
+            document.getElementById("resetMsg").innerHTML = "✅ Email reset password telah dikirim! Cek inbox/spam Anda.";
+            document.getElementById("resetMsg").style.color = "#00aa5b";
+            showToast("Email reset password terkirim!");
+            setTimeout(() => closeForgotPasswordModal(), 3000);
+        } catch(error) {
+            document.getElementById("resetMsg").innerHTML = "❌ " + error.message;
+            document.getElementById("resetMsg").style.color = "#d32f2f";
+        }
+    }
+    
+    // ========== FITUR HAPUS AKUN ==========
+    function showDeleteAccountModal() {
+        document.getElementById("deleteAccountModal").style.display = "flex";
+        document.getElementById("confirmPassword").value = "";
+        document.getElementById("deleteMsg").innerHTML = "";
+    }
+    
+    function closeDeleteAccountModal() {
+        document.getElementById("deleteAccountModal").style.display = "none";
+    }
+    
+    async function deleteAccount() {
+        const password = document.getElementById("confirmPassword").value;
+        if(!password) {
+            document.getElementById("deleteMsg").innerHTML = "Masukkan password Anda!";
+            document.getElementById("deleteMsg").style.color = "#d32f2f";
+            return;
+        }
+        
+        if(!confirm("⚠️ PERINGATAN AKHIR: Semua produk dan data toko akan HILANG PERMANEN! Anda yakin ingin menghapus akun?")) {
+            return;
+        }
+        
+        try {
+            const user = auth.currentUser;
+            const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+            await user.reauthenticateWithCredential(credential);
+            await db.collection("stores").doc(user.uid).delete();
+            await user.delete();
+            
+            showToast("Akun berhasil dihapus!");
+            
+            localStorage.removeItem("firebase_uid");
+            localStorage.removeItem("firebase_email");
+            localStorage.removeItem("public_store_data");
+            
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+            
+        } catch(error) {
+            if(error.code === 'auth/wrong-password') {
+                document.getElementById("deleteMsg").innerHTML = "Password salah!";
+            } else if(error.code === 'auth/requires-recent-login') {
+                document.getElementById("deleteMsg").innerHTML = "Silakan logout dan login kembali, lalu coba lagi.";
+            } else {
+                document.getElementById("deleteMsg").innerHTML = "Error: " + error.message;
+            }
+            document.getElementById("deleteMsg").style.color = "#d32f2f";
+        }
+    }
+    
+    // ========== AUTHENTICATION ==========
+    async function doRegister() {
+        const name = document.getElementById("regName").value.trim();
+        const email = document.getElementById("regEmail").value.trim();
+        const password = document.getElementById("regPassword").value;
+        
+        if(!name || !email || !password) {
+            document.getElementById("loginMsg").innerText = "Semua field harus diisi!";
+            return;
+        }
+        if(password.length < 6) {
+            document.getElementById("loginMsg").innerText = "Password minimal 6 karakter!";
+            return;
+        }
+        
+        try {
+            const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+            const uid = userCredential.user.uid;
+            
+            await db.collection("stores").doc(uid).set({
+                name: name,
+                email: email,
+                leftTitle: name,
+                centerTitle: "✨ Selamat Belanja ✨",
+                storeDesc: "Selamat datang di toko kami",
+                categories: ["Elektronik", "Fashion", "Rumah Tangga", "Olahraga", "Kecantikan", "Makanan"],
+                products: [],
+                createdAt: new Date()
+            });
+            
+            document.getElementById("loginMsg").className = "success-msg";
+            document.getElementById("loginMsg").innerHTML = "✅ Pendaftaran berhasil! Silakan login.";
+            showLogin();
+        } catch(error) {
+            document.getElementById("loginMsg").className = "error-msg";
+            document.getElementById("loginMsg").innerText = error.message;
+        }
+    }
+    
+    async function doLogin() {
+        const email = document.getElementById("loginEmail").value.trim();
+        const password = document.getElementById("loginPassword").value;
+        
+        try {
+            const userCredential = await auth.signInWithEmailAndPassword(email, password);
+            currentUser = userCredential.user;
+            
+            localStorage.setItem("firebase_uid", currentUser.uid);
+            localStorage.setItem("firebase_email", currentUser.email);
+            
+            document.getElementById("loginScreen").style.display = "none";
+            document.getElementById("adminPanel").style.display = "block";
+            document.getElementById("userEmailDisplay").innerText = currentUser.email;
+            
+            await loadUserData();
+        } catch(error) {
+            document.getElementById("loginMsg").className = "error-msg";
+            document.getElementById("loginMsg").innerText = "Email atau password salah!";
+        }
+    }
+    
+    async function logout() {
+        await auth.signOut();
+        localStorage.removeItem("firebase_uid");
+        localStorage.removeItem("firebase_email");
+        currentUser = null;
+        document.getElementById("loginScreen").style.display = "flex";
+        document.getElementById("adminPanel").style.display = "none";
+        showLogin();
+    }
+    
+    function showRegister() {
+        document.getElementById("loginForm").style.display = "none";
+        document.getElementById("registerForm").style.display = "block";
+        document.getElementById("loginMsg").innerHTML = "";
+    }
+    
+    function showLogin() {
+        document.getElementById("loginForm").style.display = "block";
+        document.getElementById("registerForm").style.display = "none";
+        document.getElementById("loginMsg").innerHTML = "";
+    }
+    
+    // ========== SHARE LINK PUBLIK ==========
+    function sharePublicLink() {
+        if(!currentUser) return;
+        
+        // Menggunakan nama file etalase.html (bukan etalase-publik.html)
+        const baseUrl = window.location.origin + window.location.pathname.replace('admin.html', '');
+        const publicUrl = `${baseUrl}etalase.html?store=${currentUser.uid}`;
+        
+        navigator.clipboard.writeText(publicUrl).then(() => {
+            showToast("✅ Link toko berhasil disalin!");
+        }).catch(() => {
+            alert("Link toko Anda:\n" + publicUrl);
+        });
+    }
+    
+    // ========== LOAD DATA DARI FIRESTORE ==========
+    async function loadUserData() {
+        if(!currentUser) return;
+        
+        const docRef = db.collection("stores").doc(currentUser.uid);
+        const doc = await docRef.get();
+        
+        if(doc.exists) {
+            const data = doc.data();
+            storeSettings = {
+                leftTitle: data.leftTitle || data.name,
+                centerTitle: data.centerTitle || "✨ Selamat Belanja ✨",
+                storeDesc: data.storeDesc || "Selamat datang di toko kami"
+            };
+            categories = data.categories || ["Elektronik", "Fashion", "Rumah Tangga", "Olahraga", "Kecantikan", "Makanan"];
+            products = data.products || [];
+            
+            document.getElementById("leftTitle").value = storeSettings.leftTitle;
+            document.getElementById("centerTitle").value = storeSettings.centerTitle;
+            document.getElementById("storeDesc").value = storeSettings.storeDesc;
+            document.getElementById("storeTitleDisplay").innerText = storeSettings.leftTitle;
+            
+            renderCategoryList();
+            renderCategorySelect();
+            renderProductsTable();
+            updateStats();
+            
+            localStorage.setItem("public_store_data", JSON.stringify({
+                leftTitle: storeSettings.leftTitle,
+                centerTitle: storeSettings.centerTitle,
+                storeDesc: storeSettings.storeDesc,
+                categories: categories,
+                products: products
+            }));
+        }
+    }
+    
+    async function saveUserData() {
+        if(!currentUser) return;
+        
+        await db.collection("stores").doc(currentUser.uid).set({
+            leftTitle: document.getElementById("leftTitle").value,
+            centerTitle: document.getElementById("centerTitle").value,
+            storeDesc: document.getElementById("storeDesc").value,
+            categories: categories,
+            products: products,
+            updatedAt: new Date()
+        }, { merge: true });
+        
+        localStorage.setItem("public_store_data", JSON.stringify({
+            leftTitle: document.getElementById("leftTitle").value,
+            centerTitle: document.getElementById("centerTitle").value,
+            storeDesc: document.getElementById("storeDesc").value,
+            categories: categories,
+            products: products
+        }));
+    }
+    
+    async function saveDisplaySettings() {
+        await saveUserData();
+        showToast("Pengaturan tampilan berhasil disimpan!");
+    }
+    
+    // ========== KATEGORI ==========
+    function renderCategoryList() {
+        const container = document.getElementById("categoryList");
+        container.innerHTML = categories.map(cat => `
+            <div class="category-tag">
+                ${cat}
+                <button onclick="deleteCategory('${cat}')"><i class="fas fa-times"></i></button>
+            </div>
+        `).join('');
+    }
+    
+    function renderCategorySelect() {
+        const select = document.getElementById("productCategory");
+        select.innerHTML = categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+    }
+    
+    async function addCategory() {
+        const newCat = document.getElementById("newCategory").value.trim();
+        if(newCat && !categories.includes(newCat)) {
+            categories.push(newCat);
+            await saveUserData();
+            renderCategoryList();
+            renderCategorySelect();
+            document.getElementById("newCategory").value = "";
+            showToast("Kategori berhasil ditambahkan!");
+        } else if(categories.includes(newCat)) {
+            showToast("Kategori sudah ada!", true);
+        }
+    }
+    
+    async function deleteCategory(category) {
+        if(confirm(`Hapus kategori "${category}"?`)) {
+            categories = categories.filter(c => c !== category);
+            products.forEach(p => { if(p.category === category) p.category = "Lainnya"; });
+            if(!categories.includes("Lainnya")) categories.push("Lainnya");
+            await saveUserData();
+            renderCategoryList();
+            renderCategorySelect();
+            renderProductsTable();
+            updateStats();
+            showToast("Kategori berhasil dihapus!");
+        }
+    }
+    
+    // ========== PRODUK ==========
+    async function saveProduct() {
+        const name = document.getElementById("productName").value.trim();
+        const category = document.getElementById("productCategory").value;
+        const image = document.getElementById("productImage").value.trim();
+        const platform = document.getElementById("productPlatform").value;
+        const link = document.getElementById("productLink").value.trim();
+        
+        if(!name) { showToast("Nama produk harus diisi!", true); return; }
+        if(!link) { showToast("Link produk harus diisi!", true); return; }
+        
+        if(editingId) {
+            const index = products.findIndex(p => p.id === editingId);
+            if(index !== -1) {
+                products[index] = { ...products[index], name, category, image: image || products[index].image, platform, link };
+                showToast("Produk berhasil diupdate!");
+            }
+            editingId = null;
+            document.getElementById("cancelBtn").style.display = "none";
+            document.getElementById("formTitle").innerText = "Tambah Produk Baru";
+        } else {
+            const newProduct = { id: Date.now().toString(), name, category, image: image || "https://picsum.photos/id/20/400/300", platform, link };
+            products.push(newProduct);
+            showToast("Produk berhasil ditambahkan!");
+        }
+        
+        await saveUserData();
+        renderProductsTable();
+        updateStats();
+        clearForm();
+    }
+    
+    function editProduct(id) {
+        const product = products.find(p => p.id === id);
+        if(!product) return;
+        editingId = id;
+        document.getElementById("productName").value = product.name;
+        document.getElementById("productCategory").value = product.category;
+        document.getElementById("productImage").value = product.image || "";
+        document.getElementById("productPlatform").value = product.platform;
+        document.getElementById("productLink").value = product.link;
+        document.getElementById("cancelBtn").style.display = "inline-block";
+        document.getElementById("formTitle").innerText = "Edit Produk";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
+    function cancelEdit() {
+        editingId = null;
+        clearForm();
+        document.getElementById("cancelBtn").style.display = "none";
+        document.getElementById("formTitle").innerText = "Tambah Produk Baru";
+    }
+    
+    async function deleteProduct(id) {
+        if(confirm("Hapus produk ini?")) {
+            products = products.filter(p => p.id !== id);
+            await saveUserData();
+            renderProductsTable();
+            updateStats();
+            showToast("Produk dihapus!");
+        }
+    }
+    
+    function clearForm() {
+        document.getElementById("productName").value = "";
+        document.getElementById("productImage").value = "";
+        document.getElementById("productLink").value = "";
+        document.getElementById("productPlatform").value = "shopee";
+    }
+    
+    function renderProductsTable() {
+        const tbody = document.getElementById("productsTableBody");
+        if(products.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada produk. Silakan tambah produk baru. </td></table>';
+            return;
+        }
+        tbody.innerHTML = products.map(p => {
+            let platformColor = p.platform === 'shopee' ? '#ee4d2d' : (p.platform === 'tiktok' ? '#010101' : '#6366f1');
+            return `
+                <tr>
+                    <td><img src="${p.image}" style="width:40px;height:40px;object-fit:cover;border-radius:8px;" onerror="this.src='https://picsum.photos/id/20/40/40'"></td>
+                    <td><strong>${escapeHtml(p.name)}</strong></td>
+                    <td>${p.category}</td>
+                    <td><span style="background:${platformColor}; padding:2px 8px; border-radius:20px; font-size:0.7rem;">${p.platform}</span></td>
+                    <td><button class="btn-edit" onclick="editProduct('${p.id}')">Edit</button> <button class="btn-delete" onclick="deleteProduct('${p.id}')">Hapus</button></td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    function updateStats() {
+        document.getElementById("statsContainer").innerHTML = `
+            <div class="stat-card"><i class="fas fa-boxes"></i><h3>${products.length}</h3><p>Total Produk</p></div>
+            <div class="stat-card"><i class="fab fa-shopify"></i><h3>${products.filter(p => p.platform === 'shopee').length}</h3><p>Shopee</p></div>
+            <div class="stat-card"><i class="fab fa-tiktok"></i><h3>${products.filter(p => p.platform === 'tiktok').length}</h3><p>TikTok</p></div>
+            <div class="stat-card"><i class="fas fa-link"></i><h3>${products.filter(p => p.platform === 'lynk').length}</h3><p>Lynk.id</p></div>
+        `;
+    }
+    
+    function escapeHtml(str) { 
+        if(!str) return ""; 
+        return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;')); 
+    }
+    
+    function openPreview() { 
+        // Mengarah ke etalase.html (bukan etalase-publik.html)
+        window.open("etalase.html", "_blank"); 
+    }
+    
+    // ========== CEK AUTO LOGIN ==========
+    auth.onAuthStateChanged(async (user) => {
+        if(user) {
+            currentUser = user;
+            localStorage.setItem("firebase_uid", user.uid);
+            localStorage.setItem("firebase_email", user.email);
+            document.getElementById("loginScreen").style.display = "none";
+            document.getElementById("adminPanel").style.display = "block";
+            document.getElementById("userEmailDisplay").innerText = user.email;
+            await loadUserData();
+            document.getElementById("loadingScreen").style.display = "none";
+        } else {
+            document.getElementById("loadingScreen").style.display = "none";
+            document.getElementById("loginScreen").style.display = "flex";
+        }
+    });
+</script>
+</body>
+</html>

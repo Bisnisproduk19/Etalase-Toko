@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Etalase Belanja</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #e9edf2 100%); min-height: 100vh; }
+        
+        .navbar { background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .navbar h2 { font-size: 1.2rem; background: linear-gradient(135deg, #ee4d2d, #ff6b4a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        
+        .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding: 40px 20px; }
+        .hero h1 { font-size: 1.5rem; margin-bottom: 8px; }
+        .hero p { font-size: 0.85rem; opacity: 0.9; }
+        
+        .filter-bar { max-width: 100%; margin: -20px auto 20px; padding: 0 12px; }
+        .filter-card { background: white; border-radius: 28px; padding: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        
+        .platform-wrapper { overflow-x: auto; white-space: nowrap; margin-bottom: 12px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+        .platform-menu { display: inline-flex; gap: 8px; background: #f1f3f5; padding: 4px; border-radius: 50px; }
+        .platform-btn { padding: 8px 18px; border: none; border-radius: 50px; background: transparent; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+        .platform-btn.active { background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .platform-btn.shopee.active { color: #ee4d2d; }
+        .platform-btn.tiktok.active { color: #010101; }
+        .platform-btn.lynk.active { color: #6366f1; }
+        
+        .search-row { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+        .search-row input { width: 100%; padding: 10px 12px; border-radius: 50px; border: 1px solid #ddd; font-size: 0.85rem; }
+        
+        .category-filter-wrapper { width: 100%; }
+        .category-filter-wrapper select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 50px;
+            border: 1px solid #ddd;
+            background: white;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        
+        .products-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 12px 40px; }
+        .product-card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: 0.3s; }
+        .product-card:hover { transform: translateY(-3px); }
+        .product-image { height: 150px; overflow: hidden; position: relative; background: #f5f5f5; }
+        .product-image img { width: 100%; height: 100%; object-fit: cover; }
+        .product-badge { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.6); padding: 2px 8px; border-radius: 20px; font-size: 0.6rem; color: white; }
+        .product-info { padding: 10px; }
+        .product-title { font-weight: 600; font-size: 0.8rem; line-height: 1.3; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .product-category { font-size: 0.6rem; color: #888; margin-bottom: 8px; display: flex; align-items: center; gap: 4px; }
+        .btn-shop { width: 100%; padding: 8px; border: none; border-radius: 40px; font-weight: 600; font-size: 0.7rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.3s; }
+        .btn-shopee { background: #ee4d2d; color: white; }
+        .btn-tiktok { background: #010101; color: white; }
+        .btn-lynk { background: #6366f1; color: white; }
+        .btn-shop:hover { transform: translateY(-2px); filter: brightness(1.05); }
+        
+        .footer { text-align: center; padding: 20px; background: #1a1a2e; color: #aaa; font-size: 0.7rem; }
+        .empty-state { text-align: center; padding: 40px 20px; background: white; border-radius: 24px; margin: 20px; }
+        .loading-state { text-align: center; padding: 40px 20px; }
+        
+        @media (min-width: 768px) {
+            .products-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; padding: 0 32px 60px; }
+            .product-image { height: 200px; }
+            .hero h1 { font-size: 2rem; }
+            .search-row { flex-direction: row; align-items: center; }
+            .search-row input { flex: 2; }
+            .category-filter-wrapper { flex: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <h2><i class="fas fa-store"></i> <span id="storeName">Etalase Toko</span></h2>
+    <i class="fas fa-shopping-bag" style="color:#ee4d2d;"></i>
+</nav>
+
+<section class="hero">
+    <h1 id="heroTitle">✨ Belanja Produk Berkualitas ✨</h1>
+    <p id="storeDesc">Pilih platform favoritmu</p>
+</section>
+
+<div class="filter-bar">
+    <div class="filter-card">
+        <div class="platform-wrapper">
+            <div class="platform-menu">
+                <button class="platform-btn shopee active" onclick="setPlatform('shopee')"><i class="fab fa-shopify"></i> Shopee</button>
+                <button class="platform-btn tiktok" onclick="setPlatform('tiktok')"><i class="fab fa-tiktok"></i> TikTok</button>
+                <button class="platform-btn lynk" onclick="setPlatform('lynk')"><i class="fas fa-link"></i> Lynk.id</button>
+            </div>
+        </div>
+        <div class="search-row">
+            <input type="text" id="searchInput" placeholder="🔍 Cari produk...">
+            <div class="category-filter-wrapper">
+                <select id="categoryFilter">
+                    <option value="all">📋 Semua Kategori</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="productsContainer" class="products-grid">
+    <div class="loading-state"><i class="fas fa-spinner fa-spin"></i> Memuat produk...</div>
+</div>
+
+<footer class="footer">
+    <p>Harga sesuai yang tertera di platform masing-masing</p>
+</footer>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyD0rp7Rqg8avy4WHL-ZJqqGfwoWMvBMSuY",
+        authDomain: "etalase-affiliate.firebaseapp.com",
+        projectId: "etalase-affiliate",
+        storageBucket: "etalase-affiliate.firebasestorage.app",
+        messagingSenderId: "419139689572",
+        appId: "1:419139689572:web:dd808729a2efb2cdbf9371"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    
+    let storeData = { 
+        storeName: "", 
+        heroTitle: "", 
+        storeDesc: "", 
+        categories: [], 
+        products: [] 
+    };
+    let currentPlatform = "shopee";
+    
+    function getStoreIdFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('store');
+    }
+    
+    function updateCategoryFilter() {
+        const select = document.getElementById("categoryFilter");
+        const categories = storeData.categories || [];
+        
+        if(categories.length === 0) {
+            select.innerHTML = '<option value="all">📋 Semua Kategori</option>';
+            return;
+        }
+        
+        let options = '<option value="all">📋 Semua Kategori</option>';
+        categories.forEach(cat => {
+            options += `<option value="${cat}">📁 ${cat}</option>`;
+        });
+        select.innerHTML = options;
+    }
+    
+    async function loadStore() {
+        const storeId = getStoreIdFromUrl();
+        if(!storeId) {
+            document.getElementById("productsContainer").innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Link toko tidak valid</p><p style="font-size:0.7rem;">Hubungi pemilik toko untuk mendapatkan link yang benar</p></div>';
+            return;
+        }
+        
+        try {
+            const doc = await db.collection("stores").doc(storeId).get();
+            if(doc.exists) {
+                const data = doc.data();
+                storeData = {
+                    storeName: data.leftTitle || data.name || "Etalase Toko",
+                    heroTitle: data.centerTitle || "✨ Belanja Produk Berkualitas ✨",
+                    storeDesc: data.storeDesc || "Pilih platform favoritmu",
+                    categories: data.categories || ["Elektronik", "Fashion", "Rumah Tangga", "Olahraga", "Kecantikan", "Makanan"],
+                    products: data.products || []
+                };
+                
+                document.getElementById("storeName").innerText = storeData.storeName;
+                document.getElementById("heroTitle").innerHTML = storeData.heroTitle;
+                document.getElementById("storeDesc").innerText = storeData.storeDesc;
+                
+                updateCategoryFilter();
+                renderProducts();
+            } else {
+                document.getElementById("productsContainer").innerHTML = '<div class="empty-state"><i class="fas fa-store-slash"></i><p>Toko tidak ditemukan</p></div>';
+            }
+        } catch(e) {
+            console.error(e);
+            document.getElementById("productsContainer").innerHTML = '<div class="empty-state"><i class="fas fa-database"></i><p>Gagal memuat data</p></div>';
+        }
+    }
+    
+    function setPlatform(platform) {
+        currentPlatform = platform;
+        document.querySelectorAll('.platform-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.platform-btn.${platform}`).classList.add('active');
+        renderProducts();
+    }
+    
+    function renderProducts() {
+        let products = storeData.products || [];
+        let filtered = products.filter(p => p && p.platform === currentPlatform);
+        
+        const search = document.getElementById("searchInput").value.toLowerCase();
+        if(search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search));
+        
+        const category = document.getElementById("categoryFilter").value;
+        if(category !== "all") filtered = filtered.filter(p => p.category === category);
+        
+        const container = document.getElementById("productsContainer");
+        if(filtered.length === 0) {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-box-open"></i><p>Tidak ada produk</p></div>';
+            return;
+        }
+        
+        container.innerHTML = filtered.map(p => {
+            let btnClass = p.platform === "shopee" ? "btn-shopee" : (p.platform === "tiktok" ? "btn-tiktok" : "btn-lynk");
+            let btnIcon = p.platform === "shopee" ? '<i class="fab fa-shopify"></i>' : (p.platform === "tiktok" ? '<i class="fab fa-tiktok"></i>' : '<i class="fas fa-link"></i>');
+            return `
+                <div class="product-card">
+                    <div class="product-image">
+                        <img src="${p.image}" onerror="this.src='https://picsum.photos/id/20/400/300'">
+                        <div class="product-badge">⭐</div>
+                    </div>
+                    <div class="product-info">
+                        <div class="product-title">${escapeHtml(p.name)}</div>
+                        <div class="product-category"><i class="fas fa-tag"></i> ${p.category}</div>
+                        <button class="btn-shop ${btnClass}" onclick="window.open('${p.link}', '_blank')">
+                            ${btnIcon} Belanja
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    function escapeHtml(str) { 
+        if(!str) return "";
+        return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;'));
+    }
+    
+    document.getElementById("searchInput").addEventListener("input", () => renderProducts());
+    document.getElementById("categoryFilter").addEventListener("change", () => renderProducts());
+    
+    loadStore();
+</script>
+</body>
+</html>

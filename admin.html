@@ -7,13 +7,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     
     <style>
-        /* --- Gaya CSS SAMA PERSIS DENGAN YANG ANDA PAKAI --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: #0f0f1a; color: #e0e0e0; }
         
@@ -76,7 +74,6 @@
         .error-msg { color: #d32f2f; font-size: 0.8rem; margin-top: 0.5rem; }
         .success-msg { color: #00aa5b; font-size: 0.8rem; margin-top: 0.5rem; }
         
-        /* Modal */
         .modal {
             position: fixed;
             top: 0;
@@ -157,7 +154,6 @@
         .share-btn { background: #2196f3; }
         .delete-account-btn { background: #d32f2f; }
         
-        /* --- GAYA UNTUK MANAJEMEN PENGGUNA (SUPER ADMIN) --- */
         .users-section {
             background: rgba(255,255,255,0.05);
             border-radius: 24px;
@@ -187,6 +183,7 @@
         .btn-delete-user { background: #d32f2f; color: white; }
         .badge-active { background: #00aa5b; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; }
         .badge-blocked { background: #d32f2f; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; }
+        .badge-deleted { background: #555; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; }
 
         .settings-section, .category-section, .form-section, .products-section {
             background: rgba(255,255,255,0.05);
@@ -362,12 +359,11 @@
             <div class="user-info">
                 <span class="user-email" id="userEmailDisplay"></span>
                 <button class="share-btn" onclick="sharePublicLink()"><i class="fas fa-share-alt"></i> Bagikan Link Toko</button>
-                <button class="delete-account-btn" onclick="showDeleteAccountModal()"><i class="fas fa-trash-alt"></i> Hapus Akun</button>
+                <button class="delete-account-btn" onclick="showDeleteAccountModal()"><i class="fas fa-trash-alt"></i> Hapus Akun Saya</button>
                 <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
             </div>
         </div>
 
-        <!-- ========== BAGIAN UNTUK SUPER ADMIN ========== -->
         <div id="superAdminSection" style="display: none;">
             <div class="users-section">
                 <h3><i class="fas fa-users-cog"></i> 👑 Manajemen Pengguna (Super Admin)</h3>
@@ -382,7 +378,6 @@
             </div>
         </div>
 
-        <!-- PENGATURAN TOKO BIASA -->
         <div class="settings-section">
             <h3><i class="fas fa-sliders-h"></i> Pengaturan Tampilan Toko</h3>
             <div class="settings-grid">
@@ -459,7 +454,6 @@
     </div>
 </div>
 
-<!-- MODAL Lupa Password -->
 <div id="forgotPasswordModal" class="modal" style="display: none;">
     <div class="modal-content">
         <span class="close-modal" onclick="closeForgotPasswordModal()">&times;</span>
@@ -471,11 +465,10 @@
     </div>
 </div>
 
-<!-- MODAL Hapus Akun -->
 <div id="deleteAccountModal" class="modal" style="display: none;">
     <div class="modal-content">
         <span class="close-modal" onclick="closeDeleteAccountModal()">&times;</span>
-        <h3><i class="fas fa-exclamation-triangle"></i> Hapus Akun</h3>
+        <h3><i class="fas fa-exclamation-triangle"></i> Hapus Akun Saya</h3>
         <p style="margin-bottom: 1rem; color: #ff6b4a;">⚠️ Peringatan: Tindakan ini tidak dapat dibatalkan!</p>
         <p style="margin-bottom: 1rem; font-size: 0.85rem;">Semua produk dan data toko akan hilang permanen.</p>
         <p style="margin-bottom: 0.5rem; font-size: 0.85rem;">Masukkan password Anda untuk konfirmasi:</p>
@@ -486,7 +479,6 @@
 </div>
 
 <script>
-    // ========== FIREBASE CONFIG ==========
     const firebaseConfig = {
         apiKey: "AIzaSyD0rp7Rqg8avy4WHL-ZJqqGfwoWMvBMSuY",
         authDomain: "etalase-affiliate.firebaseapp.com",
@@ -500,7 +492,6 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
     
-    // State
     let currentUser = null;
     let editingId = null;
     let categories = ["Elektronik", "Fashion", "Rumah Tangga", "Olahraga", "Kecantikan", "Makanan"];
@@ -511,7 +502,6 @@
         storeDesc: "Pilih platform favoritmu, klik produk untuk lihat harga asli"
     };
     
-    // EMAIL SUPER ADMIN (GANTI DENGAN EMAIL ANDA)
     const SUPER_ADMIN_EMAIL = "bisnismiliarder19@gmail.com"; // <--- GANTI DENGAN EMAIL ANDA
     
     function showToast(message, isError = false) {
@@ -522,7 +512,6 @@
         setTimeout(() => toast.remove(), 3000);
     }
     
-    // ========== FITUR LUPA PASSWORD ==========
     function showForgotPassword() {
         document.getElementById("forgotPasswordModal").style.display = "flex";
         document.getElementById("resetEmail").value = "";
@@ -552,7 +541,6 @@
         }
     }
     
-    // ========== FUNGSI UNTUK SUPER ADMIN ==========
     async function loadAllUsers() {
         if (!currentUser || currentUser.email !== SUPER_ADMIN_EMAIL) return;
         
@@ -561,6 +549,8 @@
             const usersList = [];
             usersSnapshot.forEach(doc => {
                 const data = doc.data();
+                if (data.email === SUPER_ADMIN_EMAIL) return;
+                
                 usersList.push({
                     uid: doc.id,
                     email: data.email,
@@ -581,22 +571,45 @@
         if (!tbody) return;
         
         if(users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada pengguna terdaftar</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada pengguna terdaftar selain Super Admin</td></tr>';
             return;
         }
         
-        tbody.innerHTML = users.map(user => `
-            <tr>
-                <td>${user.email}</td>
-                <td>${user.name}</td>
-                <td><span class="${user.status === 'active' ? 'badge-active' : 'badge-blocked'}">${user.status === 'active' ? '✅ Aktif' : '🔒 Diblokir'}</span></td>
-                <td>${user.createdAt.toLocaleDateString('id-ID')}</td>
-                <td>
-                    ${user.status === 'active' ? `<button class="btn-block" onclick="toggleBlockUser('${user.uid}', '${user.email}')">🔒 Blokir</button>` : `<button class="btn-unblock" onclick="toggleBlockUser('${user.uid}', '${user.email}')">🔓 Buka Blokir</button>`}
-                    <button class="btn-delete-user" onclick="deleteUserAccount('${user.uid}', '${user.email}')">🗑️ Hapus</button>
-                </td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = users.map(user => {
+            let statusBadge = '';
+            let statusText = '';
+            if (user.status === 'active') {
+                statusBadge = 'badge-active';
+                statusText = '✅ Aktif';
+            } else if (user.status === 'blocked') {
+                statusBadge = 'badge-blocked';
+                statusText = '🔒 Diblokir';
+            } else if (user.status === 'deleted') {
+                statusBadge = 'badge-deleted';
+                statusText = '🗑️ Dihapus';
+            } else {
+                statusBadge = 'badge-active';
+                statusText = '✅ Aktif';
+            }
+            
+            return `
+                <tr>
+                    <td>${user.email}</td>
+                    <td>${user.name}</td>
+                    <td><span class="${statusBadge}">${statusText}</span></td>
+                    <td>${user.createdAt.toLocaleDateString('id-ID')}</td>
+                    <td>
+                        ${user.status !== 'deleted' ? `
+                            ${user.status === 'active' 
+                                ? `<button class="btn-block" onclick="toggleBlockUser('${user.uid}', '${user.email}')">🔒 Blokir</button>` 
+                                : `<button class="btn-unblock" onclick="toggleBlockUser('${user.uid}', '${user.email}')">🔓 Buka Blokir</button>`
+                            }
+                            <button class="btn-delete-user" onclick="deleteUserAccount('${user.uid}', '${user.email}')">🗑️ Hapus</button>
+                        ` : '<span style="color:#888;">Akun sudah dihapus</span>'}
+                    </td>
+                </tr>
+            `;
+        }).join('');
     }
     
     async function toggleBlockUser(uid, email) {
@@ -612,7 +625,7 @@
         try {
             await db.collection("stores").doc(uid).update({ status: newStatus });
             showToast(`Akun ${email} telah ${newStatus === "active" ? "diaktifkan" : "diblokir"}!`);
-            await loadAllUsers(); // Refresh tabel
+            await loadAllUsers();
         } catch(error) {
             console.error("Gagal mengubah status:", error);
             showToast("Gagal mengubah status akun!", true);
@@ -625,21 +638,29 @@
             return;
         }
         
-        if (!confirm(`⚠️ PERINGATAN: Anda akan menghapus akun ${email} secara permanen! Semua data tokonya akan hilang. Lanjutkan?`)) {
+        if (!confirm(`⚠️ PERMANEN: Hapus akun ${email}? Semua data toko akan hilang. Akun ini TIDAK BISA login lagi!`)) {
             return;
         }
         
         try {
+            // Hapus data toko dari Firestore
             await db.collection("stores").doc(uid).delete();
-            showToast(`Akun ${email} berhasil dihapus!`);
-            await loadAllUsers(); // Refresh tabel
+            
+            // Tandai akun sebagai terhapus di collection terpisah (untuk cegah login)
+            await db.collection("deleted_accounts").doc(uid).set({
+                email: email,
+                deletedAt: new Date()
+            });
+            
+            showToast(`✅ Akun ${email} berhasil dihapus!`);
+            await loadAllUsers();
+            
         } catch(error) {
             console.error("Gagal menghapus akun:", error);
-            showToast("Gagal menghapus akun!", true);
+            showToast("Gagal menghapus akun: " + error.message, true);
         }
     }
     
-    // ========== AUTHENTICATION ==========
     async function doRegister() {
         const name = document.getElementById("regName").value.trim();
         const email = document.getElementById("regEmail").value.trim();
@@ -679,22 +700,40 @@
         }
     }
     
+    // CEK APAKAH AKUN BISA LOGIN
+    async function canUserLogin(uid) {
+        // Cek apakah ada di deleted_accounts
+        const deletedCheck = await db.collection("deleted_accounts").doc(uid).get();
+        if (deletedCheck.exists) return false;
+        
+        // Cek apakah data toko masih ada
+        const userDoc = await db.collection("stores").doc(uid).get();
+        if (!userDoc.exists) return false;
+        
+        // Cek apakah status diblokir
+        if (userDoc.data().status === "blocked") return false;
+        
+        return true;
+    }
+    
     async function doLogin() {
         const email = document.getElementById("loginEmail").value.trim();
         const password = document.getElementById("loginPassword").value;
         
         try {
             const userCredential = await auth.signInWithEmailAndPassword(email, password);
-            currentUser = userCredential.user;
+            const uid = userCredential.user.uid;
             
-            // Cek status akun (apakah diblokir oleh Super Admin)
-            const userDoc = await db.collection("stores").doc(currentUser.uid).get();
-            if (userDoc.exists && userDoc.data().status === "blocked") {
+            // CEK APAKAH AKUN BOLEH LOGIN
+            const canLogin = await canUserLogin(uid);
+            if (!canLogin) {
                 await auth.signOut();
                 document.getElementById("loginMsg").className = "error-msg";
-                document.getElementById("loginMsg").innerText = "Akun Anda telah diblokir oleh Super Admin. Hubungi admin untuk informasi lebih lanjut.";
+                document.getElementById("loginMsg").innerText = "Akun ini telah dihapus atau diblokir oleh Super Admin. Tidak dapat login.";
                 return;
             }
+            
+            currentUser = userCredential.user;
             
             localStorage.setItem("firebase_uid", currentUser.uid);
             localStorage.setItem("firebase_email", currentUser.email);
@@ -703,7 +742,6 @@
             document.getElementById("adminPanel").style.display = "block";
             document.getElementById("userEmailDisplay").innerText = currentUser.email;
             
-            // Jika Super Admin, tampilkan bagian manajemen pengguna
             if (currentUser.email === SUPER_ADMIN_EMAIL) {
                 document.getElementById("superAdminSection").style.display = "block";
                 await loadAllUsers();
@@ -740,7 +778,6 @@
         document.getElementById("loginMsg").innerHTML = "";
     }
     
-    // ========== SHARE LINK PUBLIK ==========
     function sharePublicLink() {
         if(!currentUser) return;
         const baseUrl = window.location.origin + window.location.pathname.replace('admin.html', '');
@@ -752,7 +789,6 @@
         });
     }
     
-    // ========== LOAD DATA DARI FIRESTORE ==========
     async function loadUserData() {
         if(!currentUser) return;
         const docRef = db.collection("stores").doc(currentUser.uid);
@@ -813,7 +849,6 @@
         showToast("Pengaturan tampilan berhasil disimpan!");
     }
     
-    // ========== KATEGORI ==========
     function renderCategoryList() {
         const container = document.getElementById("categoryList");
         container.innerHTML = categories.map(cat => `
@@ -857,7 +892,6 @@
         }
     }
     
-    // ========== PRODUK ==========
     async function saveProduct() {
         const name = document.getElementById("productName").value.trim();
         const category = document.getElementById("productCategory").value;
@@ -930,7 +964,7 @@
     function renderProductsTable() {
         const tbody = document.getElementById("productsTableBody");
         if(products.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada produk. Silakan tambah produk baru. </td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada produk. Silakan tambah produk baru. </td><tr>';
             return;
         }
         tbody.innerHTML = products.map(p => {
@@ -981,7 +1015,14 @@
             const user = auth.currentUser;
             const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
             await user.reauthenticateWithCredential(credential);
+            
             await db.collection("stores").doc(user.uid).delete();
+            
+            await db.collection("deleted_accounts").doc(user.uid).set({
+                email: user.email,
+                deletedAt: new Date()
+            });
+            
             await user.delete();
             
             showToast("Akun berhasil dihapus!");
@@ -1016,12 +1057,23 @@
         document.getElementById("deleteAccountModal").style.display = "none";
     }
     
-    // ========== CEK AUTO LOGIN ==========
+    // CEK AUTO LOGIN dengan pengecekan status
     auth.onAuthStateChanged(async (user) => {
         if(user) {
+            const canLogin = await canUserLogin(user.uid);
+            if (!canLogin) {
+                await auth.signOut();
+                localStorage.removeItem("firebase_uid");
+                localStorage.removeItem("firebase_email");
+                document.getElementById("loadingScreen").style.display = "none";
+                document.getElementById("loginScreen").style.display = "flex";
+                return;
+            }
+            
             currentUser = user;
             localStorage.setItem("firebase_uid", user.uid);
             localStorage.setItem("firebase_email", user.email);
+            
             document.getElementById("loginScreen").style.display = "none";
             document.getElementById("adminPanel").style.display = "block";
             document.getElementById("userEmailDisplay").innerText = user.email;

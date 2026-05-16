@@ -154,11 +154,82 @@
         .share-btn { background: #2196f3; }
         .delete-account-btn { background: #d32f2f; }
         
-        .users-section {
+        /* MAIN MENU STYLES */
+        .main-menu {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .menu-btn {
+            background: transparent;
+            border: none;
+            padding: 0.8rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: #aaa;
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+        .menu-btn:hover {
+            background: rgba(255,255,255,0.05);
+            color: white;
+        }
+        .menu-btn.active {
+            background: linear-gradient(135deg, #ee4d2d, #ff6b4a);
+            color: white;
+            box-shadow: 0 4px 15px rgba(238,77,45,0.3);
+        }
+        
+        .menu-content {
+            display: none;
+        }
+        .menu-content.active {
+            display: block;
+        }
+        
+        /* TAB STYLES */
+        .admin-tabs {
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 0.7rem 1.3rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: #aaa;
+            border-radius: 10px 10px 0 0;
+            transition: all 0.3s;
+        }
+        .tab-btn:hover {
+            background: rgba(255,255,255,0.05);
+            color: white;
+        }
+        .tab-btn.active {
+            background: rgba(255,255,255,0.1);
+            color: #ee4d2d;
+            border-bottom: 2px solid #ee4d2d;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        
+        .users-section, .deleted-users-section {
             background: rgba(255,255,255,0.05);
             border-radius: 24px;
             padding: 1.5rem;
-            margin-bottom: 2rem;
         }
         .users-table {
             width: 100%;
@@ -171,7 +242,7 @@
             text-align: left;
             border-bottom: 1px solid rgba(255,255,255,0.1);
         }
-        .btn-block, .btn-unblock, .btn-delete-user {
+        .btn-block, .btn-unblock, .btn-delete-user, .btn-allow-register {
             padding: 0.3rem 0.8rem;
             border-radius: 8px;
             border: none;
@@ -181,15 +252,17 @@
         .btn-block { background: #ffa500; color: #1a1a2e; }
         .btn-unblock { background: #00aa5b; color: white; }
         .btn-delete-user { background: #d32f2f; color: white; }
+        .btn-allow-register { background: #2196f3; color: white; }
         .badge-active { background: #00aa5b; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; }
         .badge-blocked { background: #d32f2f; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; }
         .badge-deleted { background: #555; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; }
+        .badge-can-register { background: #2196f3; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; }
 
         .settings-section, .category-section, .form-section, .products-section {
             background: rgba(255,255,255,0.05);
             border-radius: 24px;
             padding: 1.5rem;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
         .settings-grid, .form-grid {
             display: grid;
@@ -252,7 +325,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 1rem;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
         .stat-card {
             background: rgba(255,255,255,0.05);
@@ -296,7 +369,7 @@
             border: none;
             border-radius: 12px;
             cursor: pointer;
-            margin-bottom: 1rem;
+            margin-top: 1rem;
         }
         
         .toast {
@@ -319,6 +392,8 @@
         @media (max-width: 768px) { 
             .admin-container { padding: 1rem; }
             .products-table, .users-table { font-size: 0.8rem; }
+            .menu-btn { padding: 0.5rem 1rem; font-size: 0.8rem; }
+            .tab-btn { padding: 0.4rem 1rem; font-size: 0.75rem; }
         }
     </style>
 </head>
@@ -355,7 +430,7 @@
 <div id="adminPanel" style="display: none;">
     <div class="admin-container">
         <div class="admin-header">
-            <h1><i class="fas fa-crown"></i> Admin Panel - <span id="storeTitleDisplay">Etalase Saya</span></h1>
+            <h1><i class="fas fa-store"></i> Dashboard Toko - <span id="storeTitleDisplay">Etalase Saya</span></h1>
             <div class="user-info">
                 <span class="user-email" id="userEmailDisplay"></span>
                 <button class="share-btn" onclick="sharePublicLink()"><i class="fas fa-share-alt"></i> Bagikan Link Toko</button>
@@ -364,91 +439,133 @@
             </div>
         </div>
 
-        <div id="superAdminSection" style="display: none;">
-            <div class="users-section">
-                <h3><i class="fas fa-users-cog"></i> 👑 Manajemen Pengguna (Super Admin)</h3>
+        <!-- MAIN MENU -->
+        <div class="main-menu">
+            <button class="menu-btn active" data-menu="toko" onclick="switchMenu('toko')">
+                <i class="fas fa-store"></i> Pengelolaan Toko
+            </button>
+            <button id="superAdminMenuBtn" class="menu-btn" data-menu="users" onclick="switchMenu('users')" style="display: none;">
+                <i class="fas fa-users-cog"></i> Manajemen Pengguna
+            </button>
+        </div>
+
+        <!-- MENU 1: PENGELOLAAN TOKO -->
+        <div id="toko-menu" class="menu-content active">
+            <div class="settings-section">
+                <h3><i class="fas fa-palette"></i> Pengaturan Tampilan Toko</h3>
+                <div class="settings-grid">
+                    <div class="settings-group">
+                        <label>Title Pojok Kiri (Logo Toko)</label>
+                        <input type="text" id="leftTitle" placeholder="Nama toko di pojok kiri">
+                    </div>
+                    <div class="settings-group">
+                        <label>Title Tengah (Hero Section)</label>
+                        <input type="text" id="centerTitle" placeholder="Judul besar di tengah">
+                    </div>
+                    <div class="settings-group">
+                        <label>Deskripsi Toko</label>
+                        <textarea id="storeDesc" placeholder="Deskripsi toko Anda"></textarea>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="saveDisplaySettings()"><i class="fas fa-save"></i> Simpan Pengaturan</button>
+            </div>
+
+            <div class="category-section">
+                <h3><i class="fas fa-tags"></i> Manajemen Kategori</h3>
+                <div class="category-list" id="categoryList"></div>
+                <div class="add-category">
+                    <input type="text" id="newCategory" placeholder="Kategori baru...">
+                    <button class="btn-primary" onclick="addCategory()" style="margin:0;">+ Tambah</button>
+                </div>
+            </div>
+
+            <div class="stats-grid" id="statsContainer"></div>
+
+            <div class="form-section">
+                <h3><i class="fas fa-plus-circle"></i> <span id="formTitle">Tambah Produk Baru</span></h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Nama Produk</label>
+                        <input type="text" id="productName" placeholder="Nama produk">
+                    </div>
+                    <div class="form-group">
+                        <label>Kategori</label>
+                        <select id="productCategory"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>URL Gambar</label>
+                        <input type="text" id="productImage" placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label>Platform</label>
+                        <select id="productPlatform">
+                            <option value="shopee">🛒 Shopee</option>
+                            <option value="tiktok">🎵 TikTok</option>
+                            <option value="lynk">🔗 Lynk.id</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Link Affiliate</label>
+                        <input type="text" id="productLink" placeholder="https://...">
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="saveProduct()"><i class="fas fa-save"></i> Simpan Produk</button>
+                <button id="cancelBtn" class="btn-primary" style="background:#666; display:none; margin-left:1rem;" onclick="cancelEdit()">Batal Edit</button>
+            </div>
+
+            <button class="preview-btn" onclick="openPreview()"><i class="fas fa-eye"></i> Preview Toko Publik</button>
+
+            <div class="products-section">
+                <h3><i class="fas fa-list"></i> Daftar Produk Saya</h3>
                 <div style="overflow-x: auto;">
-                    <table class="users-table">
-                        <thead>
-                            <tr><th>Email</th><th>Nama Toko</th><th>Status</th><th>Tanggal Daftar</th><th>Aksi</th></tr>
-                        </thead>
-                        <tbody id="usersTableBody"></tbody>
+                    <table class="products-table">
+                        <thead><tr><th>Gambar</th><th>Nama</th><th>Kategori</th><th>Platform</th><th>Aksi</th></tr></thead>
+                        <tbody id="productsTableBody"></tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <div class="settings-section">
-            <h3><i class="fas fa-sliders-h"></i> Pengaturan Tampilan Toko</h3>
-            <div class="settings-grid">
-                <div class="settings-group">
-                    <label>Title Pojok Kiri (Logo Toko)</label>
-                    <input type="text" id="leftTitle" placeholder="Nama toko di pojok kiri">
-                </div>
-                <div class="settings-group">
-                    <label>Title Tengah (Hero Section)</label>
-                    <input type="text" id="centerTitle" placeholder="Judul besar di tengah">
-                </div>
-                <div class="settings-group">
-                    <label>Deskripsi Toko</label>
-                    <textarea id="storeDesc" placeholder="Deskripsi toko Anda"></textarea>
+        <!-- MENU 2: MANAJEMEN PENGGUNA -->
+        <div id="users-menu" class="menu-content">
+            <div class="admin-tabs">
+                <button class="tab-btn active" data-tab="active-users" onclick="switchUserTab('active-users')">
+                    <i class="fas fa-users"></i> Daftar Pengguna Aktif
+                </button>
+                <button class="tab-btn" data-tab="deleted-users" onclick="switchUserTab('deleted-users')">
+                    <i class="fas fa-trash-alt"></i> Akun Terhapus & Izin Daftar
+                </button>
+            </div>
+            
+            <!-- TAB 1: Daftar Pengguna Aktif -->
+            <div id="active-users-tab" class="tab-content active">
+                <div class="users-section">
+                    <h3><i class="fas fa-user-check"></i> Pengguna Aktif</h3>
+                    <div style="overflow-x: auto; margin-top: 1rem;">
+                        <table class="users-table">
+                            <thead>
+                                <tr><th>Email</th><th>Nama Toko</th><th>Status</th><th>Tanggal Daftar</th><th>Aksi</th></tr>
+                            </thead>
+                            <tbody id="usersTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-            <button class="btn-primary" onclick="saveDisplaySettings()"><i class="fas fa-save"></i> Simpan Pengaturan</button>
-        </div>
-
-        <div class="category-section">
-            <h3><i class="fas fa-tags"></i> Manajemen Kategori</h3>
-            <div class="category-list" id="categoryList"></div>
-            <div class="add-category">
-                <input type="text" id="newCategory" placeholder="Kategori baru...">
-                <button class="btn-primary" onclick="addCategory()" style="margin:0;">+ Tambah</button>
-            </div>
-        </div>
-
-        <div class="stats-grid" id="statsContainer"></div>
-
-        <div class="form-section">
-            <h3><i class="fas fa-plus-circle"></i> <span id="formTitle">Tambah Produk Baru</span></h3>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>Nama Produk</label>
-                    <input type="text" id="productName" placeholder="Nama produk">
+            
+            <!-- TAB 2: Akun Terhapus & Izin Daftar Ulang -->
+            <div id="deleted-users-tab" class="tab-content">
+                <div class="deleted-users-section">
+                    <h3><i class="fas fa-history"></i> Akun Terhapus</h3>
+                    <p style="font-size: 0.8rem; margin-bottom: 1rem; color: #aaa;">Akun yang dihapus tidak bisa mendaftar ulang kecuali Super Admin mengizinkan.</p>
+                    <div style="overflow-x: auto;">
+                        <table class="users-table">
+                            <thead>
+                                <tr><th>Email</th><th>Tanggal Dihapus</th><th>Status Izin</th><th>Aksi</th></tr>
+                            </thead>
+                            <tbody id="deletedUsersTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Kategori</label>
-                    <select id="productCategory"></select>
-                </div>
-                <div class="form-group">
-                    <label>URL Gambar</label>
-                    <input type="text" id="productImage" placeholder="https://...">
-                </div>
-                <div class="form-group">
-                    <label>Platform</label>
-                    <select id="productPlatform">
-                        <option value="shopee">🛒 Shopee</option>
-                        <option value="tiktok">🎵 TikTok</option>
-                        <option value="lynk">🔗 Lynk.id</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Link Affiliate</label>
-                    <input type="text" id="productLink" placeholder="https://...">
-                </div>
-            </div>
-            <button class="btn-primary" onclick="saveProduct()"><i class="fas fa-save"></i> Simpan Produk</button>
-            <button id="cancelBtn" class="btn-primary" style="background:#666; display:none; margin-left:1rem;" onclick="cancelEdit()">Batal Edit</button>
-        </div>
-
-        <button class="preview-btn" onclick="openPreview()"><i class="fas fa-eye"></i> Preview Toko Publik</button>
-
-        <div class="products-section">
-            <h3><i class="fas fa-list"></i> Daftar Produk Saya</h3>
-            <div style="overflow-x: auto;">
-                <table class="products-table">
-                    <thead><tr><th>Gambar</th><th>Nama</th><th>Kategori</th><th>Platform</th><th>Aksi</th></tr></thead>
-                    <tbody id="productsTableBody"></tbody>
-                </table>
             </div>
         </div>
     </div>
@@ -512,6 +629,28 @@
         setTimeout(() => toast.remove(), 3000);
     }
     
+    function switchMenu(menuId) {
+        document.querySelectorAll('.menu-content').forEach(menu => {
+            menu.classList.remove('active');
+        });
+        document.querySelectorAll('.menu-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.getElementById(`${menuId}-menu`).classList.add('active');
+        document.querySelector(`.menu-btn[data-menu="${menuId}"]`).classList.add('active');
+    }
+    
+    function switchUserTab(tabId) {
+        document.querySelectorAll('#users-menu .tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelectorAll('#users-menu .tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.getElementById(`${tabId}-tab`).classList.add('active');
+        document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
+    }
+    
     function showForgotPassword() {
         document.getElementById("forgotPasswordModal").style.display = "flex";
         document.getElementById("resetEmail").value = "";
@@ -541,6 +680,120 @@
         }
     }
     
+    // ========== DETEKSI DAN PERBAIKI AKUN BERMASALAH ==========
+    async function checkAndFixOrphanAccount(uid, email) {
+        // Cek apakah ada di deleted_accounts
+        const deletedCheck = await db.collection("deleted_accounts").doc(uid).get();
+        if (deletedCheck.exists) {
+            return false; // Sudah terdaftar sebagai deleted
+        }
+        
+        // Cek apakah ada data di stores
+        const storeDoc = await db.collection("stores").doc(uid).get();
+        if (!storeDoc.exists) {
+            // Akun ini tidak memiliki data toko (orphan account)
+            // Tambahkan ke deleted_accounts otomatis
+            await db.collection("deleted_accounts").doc(uid).set({
+                email: email,
+                deletedAt: new Date(),
+                canReRegister: false,
+                detectedAutomatically: true
+            });
+            console.log(`Orphan account detected and blocked: ${email}`);
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // ========== MANAJEMEN AKUN TERHAPUS ==========
+    async function loadDeletedAccounts() {
+        if (!currentUser || currentUser.email !== SUPER_ADMIN_EMAIL) return;
+        
+        try {
+            const deletedSnapshot = await db.collection("deleted_accounts").get();
+            const deletedList = [];
+            deletedSnapshot.forEach(doc => {
+                const data = doc.data();
+                deletedList.push({
+                    uid: doc.id,
+                    email: data.email,
+                    canReRegister: data.canReRegister || false,
+                    deletedAt: data.deletedAt ? data.deletedAt.toDate() : new Date()
+                });
+            });
+            renderDeletedUsersTable(deletedList);
+        } catch(error) {
+            console.error("Gagal memuat akun terhapus:", error);
+        }
+    }
+    
+    function renderDeletedUsersTable(deletedUsers) {
+        const tbody = document.getElementById("deletedUsersTableBody");
+        if (!tbody) return;
+        
+        if(deletedUsers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Belum ada akun yang dihapus</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = deletedUsers.map(user => `
+            <tr>
+                <td>${escapeHtml(user.email)}</td>
+                <td>${user.deletedAt.toLocaleDateString('id-ID')} ${user.deletedAt.toLocaleTimeString('id-ID')}</td>
+                <td><span class="${user.canReRegister ? 'badge-can-register' : 'badge-deleted'}">${user.canReRegister ? '✅ Diizinkan daftar ulang' : '❌ Tidak boleh daftar ulang'}</span></td>
+                <td>
+                    ${!user.canReRegister 
+                        ? `<button class="btn-allow-register" onclick="allowReRegister('${user.uid}', '${escapeHtml(user.email)}')">🔓 Izinkan Daftar Ulang</button>` 
+                        : `<button class="btn-block" onclick="disallowReRegister('${user.uid}', '${escapeHtml(user.email)}')">🔒 Cabut Izin Daftar</button>`
+                    }
+                    <button class="btn-delete-user" onclick="permanentlyDeleteDeletedAccount('${user.uid}', '${escapeHtml(user.email)}')">🗑️ Hapus Catatan</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    async function allowReRegister(uid, email) {
+        if (!confirm(`Izinkan ${email} untuk mendaftar ulang?`)) return;
+        
+        try {
+            await db.collection("deleted_accounts").doc(uid).update({
+                canReRegister: true
+            });
+            showToast(`✅ ${email} sekarang diizinkan mendaftar ulang`);
+            await loadDeletedAccounts();
+        } catch(error) {
+            showToast("Gagal mengubah izin: " + error.message, true);
+        }
+    }
+    
+    async function disallowReRegister(uid, email) {
+        if (!confirm(`Cabut izin daftar ulang untuk ${email}?`)) return;
+        
+        try {
+            await db.collection("deleted_accounts").doc(uid).update({
+                canReRegister: false
+            });
+            showToast(`🔒 Izin daftar ulang untuk ${email} telah dicabut`);
+            await loadDeletedAccounts();
+        } catch(error) {
+            showToast("Gagal mengubah izin: " + error.message, true);
+        }
+    }
+    
+    async function permanentlyDeleteDeletedAccount(uid, email) {
+        if (!confirm(`Hapus catatan akun ${email} dari daftar terhapus? Ini tidak mempengaruhi akun Firebase Auth-nya.`)) return;
+        
+        try {
+            await db.collection("deleted_accounts").doc(uid).delete();
+            showToast(`Catatan ${email} telah dihapus`);
+            await loadDeletedAccounts();
+        } catch(error) {
+            showToast("Gagal menghapus catatan: " + error.message, true);
+        }
+    }
+    
+    // ========== MANAJEMEN PENGGUNA AKTIF ==========
     async function loadAllUsers() {
         if (!currentUser || currentUser.email !== SUPER_ADMIN_EMAIL) return;
         
@@ -571,7 +824,7 @@
         if (!tbody) return;
         
         if(users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada pengguna terdaftar selain Super Admin</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada pengguna terdaftar selain Super Admin</td>' + '</tr>';
             return;
         }
         
@@ -584,9 +837,6 @@
             } else if (user.status === 'blocked') {
                 statusBadge = 'badge-blocked';
                 statusText = '🔒 Diblokir';
-            } else if (user.status === 'deleted') {
-                statusBadge = 'badge-deleted';
-                statusText = '🗑️ Dihapus';
             } else {
                 statusBadge = 'badge-active';
                 statusText = '✅ Aktif';
@@ -594,18 +844,16 @@
             
             return `
                 <tr>
-                    <td>${user.email}</td>
-                    <td>${user.name}</td>
+                    <td>${escapeHtml(user.email)}</td>
+                    <td>${escapeHtml(user.name)}</td>
                     <td><span class="${statusBadge}">${statusText}</span></td>
                     <td>${user.createdAt.toLocaleDateString('id-ID')}</td>
                     <td>
-                        ${user.status !== 'deleted' ? `
-                            ${user.status === 'active' 
-                                ? `<button class="btn-block" onclick="toggleBlockUser('${user.uid}', '${user.email}')">🔒 Blokir</button>` 
-                                : `<button class="btn-unblock" onclick="toggleBlockUser('${user.uid}', '${user.email}')">🔓 Buka Blokir</button>`
-                            }
-                            <button class="btn-delete-user" onclick="deleteUserAccount('${user.uid}', '${user.email}')">🗑️ Hapus</button>
-                        ` : '<span style="color:#888;">Akun sudah dihapus</span>'}
+                        ${user.status === 'active' 
+                            ? `<button class="btn-block" onclick="toggleBlockUser('${user.uid}', '${escapeHtml(user.email)}')">🔒 Blokir</button>` 
+                            : `<button class="btn-unblock" onclick="toggleBlockUser('${user.uid}', '${escapeHtml(user.email)}')">🔓 Buka Blokir</button>`
+                        }
+                        <button class="btn-delete-user" onclick="deleteUserAccount('${user.uid}', '${escapeHtml(user.email)}')">🗑️ Hapus</button>
                     </td>
                 </tr>
             `;
@@ -638,7 +886,7 @@
             return;
         }
         
-        if (!confirm(`⚠️ PERMANEN: Hapus akun ${email}? Semua data toko akan hilang. Akun ini TIDAK BISA login lagi!`)) {
+        if (!confirm(`⚠️ PERMANEN: Hapus akun ${email}? Semua data toko akan hilang. Akun ini TIDAK BISA login lagi kecuali Super Admin mengizinkan daftar ulang!`)) {
             return;
         }
         
@@ -646,14 +894,16 @@
             // Hapus data toko dari Firestore
             await db.collection("stores").doc(uid).delete();
             
-            // Tandai akun sebagai terhapus di collection terpisah (untuk cegah login)
+            // Tandai akun sebagai terhapus
             await db.collection("deleted_accounts").doc(uid).set({
                 email: email,
-                deletedAt: new Date()
+                deletedAt: new Date(),
+                canReRegister: false
             });
             
             showToast(`✅ Akun ${email} berhasil dihapus!`);
             await loadAllUsers();
+            await loadDeletedAccounts();
             
         } catch(error) {
             console.error("Gagal menghapus akun:", error);
@@ -661,6 +911,27 @@
         }
     }
     
+    // ========== CEK APAKAH BISA DAFTAR ==========
+    async function canRegister(email) {
+        // Cek di deleted_accounts
+        const deletedAccountsSnapshot = await db.collection("deleted_accounts").where("email", "==", email).get();
+        if (!deletedAccountsSnapshot.empty) {
+            const deletedData = deletedAccountsSnapshot.docs[0].data();
+            if (!deletedData.canReRegister) {
+                return { allowed: false, reason: "Akun ini pernah dihapus. Hanya Super Admin yang dapat mengizinkan pendaftaran ulang." };
+            }
+        }
+        
+        // Cek di stores (aktif)
+        const storesSnapshot = await db.collection("stores").where("email", "==", email).get();
+        if (!storesSnapshot.empty) {
+            return { allowed: false, reason: "Email sudah terdaftar!" };
+        }
+        
+        return { allowed: true, reason: "" };
+    }
+    
+    // ========== AUTHENTICATION ==========
     async function doRegister() {
         const name = document.getElementById("regName").value.trim();
         const email = document.getElementById("regEmail").value.trim();
@@ -672,6 +943,13 @@
         }
         if(password.length < 6) {
             document.getElementById("loginMsg").innerText = "Password minimal 6 karakter!";
+            return;
+        }
+        
+        const registerCheck = await canRegister(email);
+        if (!registerCheck.allowed) {
+            document.getElementById("loginMsg").className = "error-msg";
+            document.getElementById("loginMsg").innerText = registerCheck.reason;
             return;
         }
         
@@ -691,6 +969,12 @@
                 createdAt: new Date()
             });
             
+            // Hapus catatan deleted_accounts jika ada
+            const deletedSnapshot = await db.collection("deleted_accounts").where("email", "==", email).get();
+            deletedSnapshot.forEach(async (doc) => {
+                await db.collection("deleted_accounts").doc(doc.id).delete();
+            });
+            
             document.getElementById("loginMsg").className = "success-msg";
             document.getElementById("loginMsg").innerHTML = "✅ Pendaftaran berhasil! Silakan login.";
             showLogin();
@@ -700,8 +984,11 @@
         }
     }
     
-    // CEK APAKAH AKUN BISA LOGIN
-    async function canUserLogin(uid) {
+    async function canUserLogin(uid, email) {
+        // CEK DAN PERBAIKI AKUN BERMASALAH (Orphan Account)
+        const isValid = await checkAndFixOrphanAccount(uid, email);
+        if (!isValid) return false;
+        
         // Cek apakah ada di deleted_accounts
         const deletedCheck = await db.collection("deleted_accounts").doc(uid).get();
         if (deletedCheck.exists) return false;
@@ -724,8 +1011,7 @@
             const userCredential = await auth.signInWithEmailAndPassword(email, password);
             const uid = userCredential.user.uid;
             
-            // CEK APAKAH AKUN BOLEH LOGIN
-            const canLogin = await canUserLogin(uid);
+            const canLogin = await canUserLogin(uid, email);
             if (!canLogin) {
                 await auth.signOut();
                 document.getElementById("loginMsg").className = "error-msg";
@@ -743,13 +1029,18 @@
             document.getElementById("userEmailDisplay").innerText = currentUser.email;
             
             if (currentUser.email === SUPER_ADMIN_EMAIL) {
-                document.getElementById("superAdminSection").style.display = "block";
+                document.getElementById("superAdminMenuBtn").style.display = "inline-block";
                 await loadAllUsers();
+                await loadDeletedAccounts();
+                switchMenu('users');
+                switchUserTab('active-users');
             } else {
-                document.getElementById("superAdminSection").style.display = "none";
+                document.getElementById("superAdminMenuBtn").style.display = "none";
+                switchMenu('toko');
             }
             
             await loadUserData();
+            document.getElementById("loadingScreen").style.display = "none";
         } catch(error) {
             document.getElementById("loginMsg").className = "error-msg";
             document.getElementById("loginMsg").innerText = "Email atau password salah!";
@@ -853,15 +1144,15 @@
         const container = document.getElementById("categoryList");
         container.innerHTML = categories.map(cat => `
             <div class="category-tag">
-                ${cat}
-                <button onclick="deleteCategory('${cat}')"><i class="fas fa-times"></i></button>
+                ${escapeHtml(cat)}
+                <button onclick="deleteCategory('${cat.replace(/'/g, "\\'")}')"><i class="fas fa-times"></i></button>
             </div>
         `).join('');
     }
     
     function renderCategorySelect() {
         const select = document.getElementById("productCategory");
-        select.innerHTML = categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+        select.innerHTML = categories.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('');
     }
     
     async function addCategory() {
@@ -964,7 +1255,7 @@
     function renderProductsTable() {
         const tbody = document.getElementById("productsTableBody");
         if(products.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada produk. Silakan tambah produk baru. </td><tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada produk. Silakan tambah produk baru. <table>' + '</tr>';
             return;
         }
         tbody.innerHTML = products.map(p => {
@@ -973,7 +1264,7 @@
                 <tr>
                     <td><img src="${p.image}" style="width:40px;height:40px;object-fit:cover;border-radius:8px;" onerror="this.src='https://picsum.photos/id/20/40/40'"></td>
                     <td><strong>${escapeHtml(p.name)}</strong></td>
-                    <td>${p.category}</td>
+                    <td>${escapeHtml(p.category)}</td>
                     <td><span style="background:${platformColor}; padding:2px 8px; border-radius:20px; font-size:0.7rem;">${p.platform}</span></td>
                     <td><button class="btn-edit" onclick="editProduct('${p.id}')">Edit</button> <button class="btn-delete" onclick="deleteProduct('${p.id}')">Hapus</button></td>
                 </tr>
@@ -1020,7 +1311,8 @@
             
             await db.collection("deleted_accounts").doc(user.uid).set({
                 email: user.email,
-                deletedAt: new Date()
+                deletedAt: new Date(),
+                canReRegister: false
             });
             
             await user.delete();
@@ -1057,10 +1349,9 @@
         document.getElementById("deleteAccountModal").style.display = "none";
     }
     
-    // CEK AUTO LOGIN dengan pengecekan status
     auth.onAuthStateChanged(async (user) => {
         if(user) {
-            const canLogin = await canUserLogin(user.uid);
+            const canLogin = await canUserLogin(user.uid, user.email);
             if (!canLogin) {
                 await auth.signOut();
                 localStorage.removeItem("firebase_uid");
@@ -1079,10 +1370,14 @@
             document.getElementById("userEmailDisplay").innerText = user.email;
             
             if (user.email === SUPER_ADMIN_EMAIL) {
-                document.getElementById("superAdminSection").style.display = "block";
+                document.getElementById("superAdminMenuBtn").style.display = "inline-block";
                 await loadAllUsers();
+                await loadDeletedAccounts();
+                switchMenu('users');
+                switchUserTab('active-users');
             } else {
-                document.getElementById("superAdminSection").style.display = "none";
+                document.getElementById("superAdminMenuBtn").style.display = "none";
+                switchMenu('toko');
             }
             
             await loadUserData();

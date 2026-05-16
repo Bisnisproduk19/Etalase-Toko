@@ -90,7 +90,7 @@
             background: #1a1a2e;
             padding: 2rem;
             border-radius: 24px;
-            width: 400px;
+            width: 450px;
             max-width: 90%;
             text-align: center;
         }
@@ -167,7 +167,6 @@
         .share-btn { background: #2196f3; }
         .delete-account-btn { background: #d32f2f; }
         
-        /* MAIN MENU STYLES */
         .main-menu {
             display: flex;
             gap: 1rem;
@@ -204,7 +203,6 @@
             display: block;
         }
         
-        /* TAB STYLES */
         .admin-tabs {
             margin-bottom: 1.5rem;
             border-bottom: 1px solid rgba(255,255,255,0.1);
@@ -270,6 +268,7 @@
         .badge-blocked { background: #d32f2f; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; }
         .badge-deleted { background: #555; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; }
         .badge-can-register { background: #2196f3; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; }
+        .badge-warning { background: #ffa500; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; }
 
         .settings-section, .category-section, .form-section, .products-section {
             background: rgba(255,255,255,0.05);
@@ -398,6 +397,7 @@
             animation: slideIn 0.3s ease;
         }
         .toast.error { background: #d32f2f; }
+        .toast.warning { background: #ffa500; }
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
@@ -454,7 +454,6 @@
             </div>
         </div>
 
-        <!-- MAIN MENU -->
         <div class="main-menu">
             <button class="menu-btn active" data-menu="toko" onclick="switchMenu('toko')">
                 <i class="fas fa-store"></i> Pengelolaan Toko
@@ -552,31 +551,25 @@
                 </button>
             </div>
             
-            <!-- TAB 1: Daftar Pengguna Aktif -->
             <div id="active-users-tab" class="tab-content active">
                 <div class="users-section">
                     <h3><i class="fas fa-user-check"></i> Pengguna Aktif</h3>
                     <div style="overflow-x: auto; margin-top: 1rem;">
                         <table class="users-table">
-                            <thead>
-                                <tr><th>Email</th><th>Nama Toko</th><th>Status</th><th>Tanggal Daftar</th><th>Aksi</th></tr>
-                            </thead>
+                            <thead><tr><th>Email</th><th>Nama Toko</th><th>Status</th><th>Tanggal Daftar</th><th>Aksi</th></tr></thead>
                             <tbody id="usersTableBody"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
             
-            <!-- TAB 2: Akun Terhapus & Izin Daftar Ulang -->
             <div id="deleted-users-tab" class="tab-content">
                 <div class="deleted-users-section">
                     <h3><i class="fas fa-history"></i> Akun Terhapus</h3>
                     <p style="font-size: 0.8rem; margin-bottom: 1rem; color: #aaa;">Akun yang dihapus tidak bisa mendaftar ulang kecuali Super Admin mengizinkan.</p>
                     <div style="overflow-x: auto;">
                         <table class="users-table">
-                            <thead>
-                                <tr><th>Email</th><th>Tanggal Dihapus</th><th>Status Izin</th><th>Aksi</th></tr>
-                            </thead>
+                            <thead><tr><th>Email</th><th>Tanggal Dihapus</th><th>Status Izin</th><th>Aksi</th></tr></thead>
                             <tbody id="deletedUsersTableBody"></tbody>
                         </table>
                     </div>
@@ -610,6 +603,20 @@
     </div>
 </div>
 
+<!-- MODAL HAPUS AKUN DARI AUTHENTICATION -->
+<div id="deleteAuthModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeDeleteAuthModal()">&times;</span>
+        <h3><i class="fas fa-exclamation-triangle"></i> Hapus Akun dari Authentication</h3>
+        <p style="margin-bottom: 1rem; color: #ff6b4a;">⚠️ Akun ini masih terdaftar di Firebase Authentication!</p>
+        <p style="margin-bottom: 1rem; font-size: 0.85rem;">Untuk mengizinkan pendaftaran ulang dengan email yang sama, Anda harus menghapus akun dari Authentication terlebih dahulu.</p>
+        <p style="margin-bottom: 0.5rem; font-size: 0.85rem;">Klik tombol di bawah untuk membuka Firebase Console dan hapus user:</p>
+        <button onclick="openFirebaseConsole()" style="background: #2196f3;">Buka Firebase Console</button>
+        <button onclick="markAsCanRegister()" style="background: #00aa5b; margin-top: 0.5rem;">✅ Saya sudah hapus, tandai bisa daftar</button>
+        <div id="deleteAuthMsg" style="font-size: 0.8rem; margin-top: 0.5rem;"></div>
+    </div>
+</div>
+
 <script>
     const firebaseConfig = {
         apiKey: "AIzaSyD0rp7Rqg8avy4WHL-ZJqqGfwoWMvBMSuY",
@@ -634,36 +641,30 @@
         storeDesc: "Pilih platform favoritmu, klik produk untuk lihat harga asli"
     };
     
-    // ========== 🔴 GANTI EMAIL INI DENGAN EMAIL ANDA 🔴 ==========
-    const SUPER_ADMIN_EMAIL = "bisnismiliarder19@gmail.com"; // <--- GANTI DENGAN EMAIL SUPER ADMIN ANDA
-    // ============================================================
+    // 🔴 GANTI EMAIL INI DENGAN EMAIL SUPER ADMIN ANDA 🔴
+    const SUPER_ADMIN_EMAIL = "bisnismiliarder19@gmail.com";
     
-    function showToast(message, isError = false) {
+    let pendingAllowReRegister = null;
+    
+    function showToast(message, isError = false, isWarning = false) {
         const toast = document.createElement("div");
-        toast.className = "toast" + (isError ? " error" : "");
-        toast.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i> ${message}`;
+        if (isWarning) toast.className = "toast warning";
+        else toast.className = "toast" + (isError ? " error" : "");
+        toast.innerHTML = `<i class="fas ${isWarning ? 'fa-exclamation-triangle' : (isError ? 'fa-exclamation-triangle' : 'fa-check-circle')}"></i> ${message}`;
         document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
+        setTimeout(() => toast.remove(), 5000);
     }
     
     function switchMenu(menuId) {
-        document.querySelectorAll('.menu-content').forEach(menu => {
-            menu.classList.remove('active');
-        });
-        document.querySelectorAll('.menu-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
+        document.querySelectorAll('.menu-content').forEach(menu => menu.classList.remove('active'));
+        document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
         document.getElementById(`${menuId}-menu`).classList.add('active');
         document.querySelector(`.menu-btn[data-menu="${menuId}"]`).classList.add('active');
     }
     
     function switchUserTab(tabId) {
-        document.querySelectorAll('#users-menu .tab-content').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        document.querySelectorAll('#users-menu .tab-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
+        document.querySelectorAll('#users-menu .tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('#users-menu .tab-btn').forEach(btn => btn.classList.remove('active'));
         document.getElementById(`${tabId}-tab`).classList.add('active');
         document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
     }
@@ -697,7 +698,45 @@
         }
     }
     
-    // ========== DETEKSI DAN PERBAIKI AKUN BERMASALAH ==========
+    function openFirebaseConsole() {
+        window.open("https://console.firebase.google.com/project/etalase-affiliate/authentication/users", "_blank");
+    }
+    
+    function closeDeleteAuthModal() {
+        document.getElementById("deleteAuthModal").style.display = "none";
+        pendingAllowReRegister = null;
+    }
+    
+    async function markAsCanRegister() {
+        if (!pendingAllowReRegister) return;
+        
+        try {
+            await db.collection("deleted_accounts").doc(pendingAllowReRegister.uid).update({
+                canReRegister: true,
+                authDeleted: true
+            });
+            showToast(`✅ ${pendingAllowReRegister.email} sekarang diizinkan mendaftar ulang!`);
+            await loadDeletedAccounts();
+            closeDeleteAuthModal();
+        } catch(error) {
+            showToast("Gagal mengubah izin: " + error.message, true);
+        }
+    }
+    
+    async function checkIfUserExistsInAuth(email) {
+        // Karena tidak bisa cek langsung dari client-side, kita coba reset password sebagai indikator
+        // Jika email tidak terdaftar di Auth, akan error "auth/user-not-found"
+        try {
+            await auth.sendPasswordResetEmail(email);
+            return true; // Email terdaftar
+        } catch(error) {
+            if (error.code === 'auth/user-not-found') {
+                return false;
+            }
+            return true; // Anggap terdaftar jika error lain
+        }
+    }
+    
     async function checkAndFixOrphanAccount(uid, email) {
         const deletedCheck = await db.collection("deleted_accounts").doc(uid).get();
         if (deletedCheck.exists) return false;
@@ -710,13 +749,11 @@
                 canReRegister: false,
                 detectedAutomatically: true
             });
-            console.log(`Orphan account detected and blocked: ${email}`);
             return false;
         }
         return true;
     }
     
-    // ========== MANAJEMEN AKUN TERHAPUS ==========
     async function loadDeletedAccounts() {
         if (!currentUser || currentUser.email !== SUPER_ADMIN_EMAIL) return;
         
@@ -743,7 +780,7 @@
         if (!tbody) return;
         
         if(deletedUsers.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Belum ada akun yang dihapus</td>' + '</tr>';
+            tbody.innerHTML = '</table><td colspan="4" style="text-align:center;">Belum ada akun yang dihapus</td>' + '</tr>';
             return;
         }
         
@@ -754,25 +791,24 @@
                 <td><span class="${user.canReRegister ? 'badge-can-register' : 'badge-deleted'}">${user.canReRegister ? '✅ Diizinkan daftar ulang' : '❌ Tidak boleh daftar ulang'}</span></td>
                 <td>
                     ${!user.canReRegister 
-                        ? `<button class="btn-allow-register" onclick="allowReRegister('${user.uid}', '${escapeHtml(user.email)}')">🔓 Izinkan Daftar Ulang</button>` 
+                        ? `<button class="btn-allow-register" onclick="prepareAllowReRegister('${user.uid}', '${escapeHtml(user.email)}')">🔓 Izinkan Daftar Ulang</button>` 
                         : `<button class="btn-block" onclick="disallowReRegister('${user.uid}', '${escapeHtml(user.email)}')">🔒 Cabut Izin Daftar</button>`
                     }
                     <button class="btn-delete-user" onclick="permanentlyDeleteDeletedAccount('${user.uid}', '${escapeHtml(user.email)}')">🗑️ Hapus Catatan</button>
-                </td>
+                 </td>
             </tr>
         `).join('');
     }
     
-    async function allowReRegister(uid, email) {
-        if (!confirm(`Izinkan ${email} untuk mendaftar ulang?`)) return;
+    async function prepareAllowReRegister(uid, email) {
+        pendingAllowReRegister = { uid, email };
         
-        try {
-            await db.collection("deleted_accounts").doc(uid).update({ canReRegister: true });
-            showToast(`✅ ${email} sekarang diizinkan mendaftar ulang`);
-            await loadDeletedAccounts();
-        } catch(error) {
-            showToast("Gagal mengubah izin: " + error.message, true);
-        }
+        // Cek apakah email masih terdaftar di Authentication
+        showToast(`Mengecek status email ${email}...`, false, false);
+        
+        // Tampilkan modal instruksi
+        document.getElementById("deleteAuthModal").style.display = "flex";
+        document.getElementById("deleteAuthMsg").innerHTML = `<strong>${email}</strong><br>Silakan hapus user ini dari Firebase Console terlebih dahulu.`;
     }
     
     async function disallowReRegister(uid, email) {
@@ -788,7 +824,7 @@
     }
     
     async function permanentlyDeleteDeletedAccount(uid, email) {
-        if (!confirm(`Hapus catatan akun ${email} dari daftar terhapus? Ini tidak mempengaruhi akun Firebase Auth-nya.`)) return;
+        if (!confirm(`Hapus catatan akun ${email} dari daftar terhapus?`)) return;
         
         try {
             await db.collection("deleted_accounts").doc(uid).delete();
@@ -799,7 +835,6 @@
         }
     }
     
-    // ========== MANAJEMEN PENGGUNA AKTIF ==========
     async function loadAllUsers() {
         if (!currentUser || currentUser.email !== SUPER_ADMIN_EMAIL) return;
         
@@ -846,7 +881,7 @@
                         : `<button class="btn-unblock" onclick="toggleBlockUser('${user.uid}', '${escapeHtml(user.email)}')">🔓 Buka Blokir</button>`
                     }
                     <button class="btn-delete-user" onclick="deleteUserAccount('${user.uid}', '${escapeHtml(user.email)}')">🗑️ Hapus</button>
-                </td>
+                 </td>
             </tr>
         `).join('');
     }
@@ -894,7 +929,6 @@
         }
     }
     
-    // ========== CEK APAKAH BISA DAFTAR ==========
     async function canRegister(email) {
         const deletedAccountsSnapshot = await db.collection("deleted_accounts").where("email", "==", email).get();
         if (!deletedAccountsSnapshot.empty) {
@@ -912,7 +946,6 @@
         return { allowed: true, reason: "" };
     }
     
-    // ========== AUTHENTICATION ==========
     async function doRegister() {
         const name = document.getElementById("regName").value.trim();
         const email = document.getElementById("regEmail").value.trim();
@@ -1001,7 +1034,6 @@
             document.getElementById("adminPanel").style.display = "block";
             document.getElementById("userEmailDisplay").innerText = currentUser.email;
             
-            // Cek apakah Super Admin
             if (currentUser.email === SUPER_ADMIN_EMAIL) {
                 document.getElementById("superAdminBadge").style.display = "inline-block";
                 document.getElementById("superAdminMenuBtn").style.display = "inline-block";
@@ -1238,18 +1270,18 @@
     function renderProductsTable() {
         const tbody = document.getElementById("productsTableBody");
         if(products.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada produk. Silakan tambah produk baru. <tr>' + '<tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada produk. Silakan tambah produk baru.</td>' + '</tr>';
             return;
         }
         tbody.innerHTML = products.map(p => {
             let platformColor = p.platform === 'shopee' ? '#ee4d2d' : (p.platform === 'tiktok' ? '#010101' : '#6366f1');
             return `
                 <tr>
-                    <td><img src="${p.image}" style="width:40px;height:40px;object-fit:cover;border-radius:8px;" onerror="this.src='https://picsum.photos/id/20/40/40'"></td>
-                    <td><strong>${escapeHtml(p.name)}</strong></td>
-                    <td>${escapeHtml(p.category)}</td>
-                    <td><span style="background:${platformColor}; padding:2px 8px; border-radius:20px; font-size:0.7rem;">${p.platform}</span></td>
-                    <td><button class="btn-edit" onclick="editProduct('${p.id}')">Edit</button> <button class="btn-delete" onclick="deleteProduct('${p.id}')">Hapus</button></td>
+                    <td><img src="${p.image}" style="width:40px;height:40px;object-fit:cover;border-radius:8px;" onerror="this.src='https://picsum.photos/id/20/40/40'">17d
+                    <td><strong>${escapeHtml(p.name)}</strong>17d
+                    <td>${escapeHtml(p.category)}17d
+                    <td><span style="background:${platformColor}; padding:2px 8px; border-radius:20px; font-size:0.7rem;">${p.platform}</span>17d
+                    <td><button class="btn-edit" onclick="editProduct('${p.id}')">Edit</button> <button class="btn-delete" onclick="deleteProduct('${p.id}')">Hapus</button>17d
                 </tr>
             `;
         }).join('');

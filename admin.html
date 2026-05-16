@@ -142,7 +142,20 @@
             font-size: 1.5rem;
         }
         .user-info { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-        .user-email { background: rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 40px; font-size: 0.8rem; }
+        .user-email { 
+            background: rgba(255,255,255,0.1); 
+            padding: 0.5rem 1rem; 
+            border-radius: 40px; 
+            font-size: 0.8rem; 
+        }
+        .super-admin-badge {
+            background: #ff6b4a;
+            color: #1a1a2e;
+            padding: 0.3rem 0.8rem;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
         .logout-btn, .share-btn, .delete-account-btn {
             background: rgba(255,255,255,0.1);
             padding: 0.5rem 1rem;
@@ -370,6 +383,7 @@
             border-radius: 12px;
             cursor: pointer;
             margin-top: 1rem;
+            width: 100%;
         }
         
         .toast {
@@ -433,6 +447,7 @@
             <h1><i class="fas fa-store"></i> Dashboard Toko - <span id="storeTitleDisplay">Etalase Saya</span></h1>
             <div class="user-info">
                 <span class="user-email" id="userEmailDisplay"></span>
+                <span id="superAdminBadge" class="super-admin-badge" style="display: none;">👑 SUPER ADMIN</span>
                 <button class="share-btn" onclick="sharePublicLink()"><i class="fas fa-share-alt"></i> Bagikan Link Toko</button>
                 <button class="delete-account-btn" onclick="showDeleteAccountModal()"><i class="fas fa-trash-alt"></i> Hapus Akun Saya</button>
                 <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
@@ -619,7 +634,9 @@
         storeDesc: "Pilih platform favoritmu, klik produk untuk lihat harga asli"
     };
     
-    const SUPER_ADMIN_EMAIL = "bisnismiliarder19@gmail.com"; // <--- GANTI DENGAN EMAIL ANDA
+    // ========== 🔴 GANTI EMAIL INI DENGAN EMAIL ANDA 🔴 ==========
+    const SUPER_ADMIN_EMAIL = "bisnismiliarder19@gmail.com"; // <--- GANTI DENGAN EMAIL SUPER ADMIN ANDA
+    // ============================================================
     
     function showToast(message, isError = false) {
         const toast = document.createElement("div");
@@ -682,17 +699,11 @@
     
     // ========== DETEKSI DAN PERBAIKI AKUN BERMASALAH ==========
     async function checkAndFixOrphanAccount(uid, email) {
-        // Cek apakah ada di deleted_accounts
         const deletedCheck = await db.collection("deleted_accounts").doc(uid).get();
-        if (deletedCheck.exists) {
-            return false; // Sudah terdaftar sebagai deleted
-        }
+        if (deletedCheck.exists) return false;
         
-        // Cek apakah ada data di stores
         const storeDoc = await db.collection("stores").doc(uid).get();
         if (!storeDoc.exists) {
-            // Akun ini tidak memiliki data toko (orphan account)
-            // Tambahkan ke deleted_accounts otomatis
             await db.collection("deleted_accounts").doc(uid).set({
                 email: email,
                 deletedAt: new Date(),
@@ -702,7 +713,6 @@
             console.log(`Orphan account detected and blocked: ${email}`);
             return false;
         }
-        
         return true;
     }
     
@@ -733,7 +743,7 @@
         if (!tbody) return;
         
         if(deletedUsers.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Belum ada akun yang dihapus</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Belum ada akun yang dihapus</td>' + '</tr>';
             return;
         }
         
@@ -757,9 +767,7 @@
         if (!confirm(`Izinkan ${email} untuk mendaftar ulang?`)) return;
         
         try {
-            await db.collection("deleted_accounts").doc(uid).update({
-                canReRegister: true
-            });
+            await db.collection("deleted_accounts").doc(uid).update({ canReRegister: true });
             showToast(`✅ ${email} sekarang diizinkan mendaftar ulang`);
             await loadDeletedAccounts();
         } catch(error) {
@@ -771,9 +779,7 @@
         if (!confirm(`Cabut izin daftar ulang untuk ${email}?`)) return;
         
         try {
-            await db.collection("deleted_accounts").doc(uid).update({
-                canReRegister: false
-            });
+            await db.collection("deleted_accounts").doc(uid).update({ canReRegister: false });
             showToast(`🔒 Izin daftar ulang untuk ${email} telah dicabut`);
             await loadDeletedAccounts();
         } catch(error) {
@@ -828,36 +834,21 @@
             return;
         }
         
-        tbody.innerHTML = users.map(user => {
-            let statusBadge = '';
-            let statusText = '';
-            if (user.status === 'active') {
-                statusBadge = 'badge-active';
-                statusText = '✅ Aktif';
-            } else if (user.status === 'blocked') {
-                statusBadge = 'badge-blocked';
-                statusText = '🔒 Diblokir';
-            } else {
-                statusBadge = 'badge-active';
-                statusText = '✅ Aktif';
-            }
-            
-            return `
-                <tr>
-                    <td>${escapeHtml(user.email)}</td>
-                    <td>${escapeHtml(user.name)}</td>
-                    <td><span class="${statusBadge}">${statusText}</span></td>
-                    <td>${user.createdAt.toLocaleDateString('id-ID')}</td>
-                    <td>
-                        ${user.status === 'active' 
-                            ? `<button class="btn-block" onclick="toggleBlockUser('${user.uid}', '${escapeHtml(user.email)}')">🔒 Blokir</button>` 
-                            : `<button class="btn-unblock" onclick="toggleBlockUser('${user.uid}', '${escapeHtml(user.email)}')">🔓 Buka Blokir</button>`
-                        }
-                        <button class="btn-delete-user" onclick="deleteUserAccount('${user.uid}', '${escapeHtml(user.email)}')">🗑️ Hapus</button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+        tbody.innerHTML = users.map(user => `
+            <tr>
+                <td>${escapeHtml(user.email)}</td>
+                <td>${escapeHtml(user.name)}</td>
+                <td><span class="${user.status === 'active' ? 'badge-active' : 'badge-blocked'}">${user.status === 'active' ? '✅ Aktif' : '🔒 Diblokir'}</span></td>
+                <td>${user.createdAt.toLocaleDateString('id-ID')}</td>
+                <td>
+                    ${user.status === 'active' 
+                        ? `<button class="btn-block" onclick="toggleBlockUser('${user.uid}', '${escapeHtml(user.email)}')">🔒 Blokir</button>` 
+                        : `<button class="btn-unblock" onclick="toggleBlockUser('${user.uid}', '${escapeHtml(user.email)}')">🔓 Buka Blokir</button>`
+                    }
+                    <button class="btn-delete-user" onclick="deleteUserAccount('${user.uid}', '${escapeHtml(user.email)}')">🗑️ Hapus</button>
+                </td>
+            </tr>
+        `).join('');
     }
     
     async function toggleBlockUser(uid, email) {
@@ -875,7 +866,6 @@
             showToast(`Akun ${email} telah ${newStatus === "active" ? "diaktifkan" : "diblokir"}!`);
             await loadAllUsers();
         } catch(error) {
-            console.error("Gagal mengubah status:", error);
             showToast("Gagal mengubah status akun!", true);
         }
     }
@@ -886,15 +876,10 @@
             return;
         }
         
-        if (!confirm(`⚠️ PERMANEN: Hapus akun ${email}? Semua data toko akan hilang. Akun ini TIDAK BISA login lagi kecuali Super Admin mengizinkan daftar ulang!`)) {
-            return;
-        }
+        if (!confirm(`⚠️ PERMANEN: Hapus akun ${email}? Semua data toko akan hilang.`)) return;
         
         try {
-            // Hapus data toko dari Firestore
             await db.collection("stores").doc(uid).delete();
-            
-            // Tandai akun sebagai terhapus
             await db.collection("deleted_accounts").doc(uid).set({
                 email: email,
                 deletedAt: new Date(),
@@ -904,16 +889,13 @@
             showToast(`✅ Akun ${email} berhasil dihapus!`);
             await loadAllUsers();
             await loadDeletedAccounts();
-            
         } catch(error) {
-            console.error("Gagal menghapus akun:", error);
             showToast("Gagal menghapus akun: " + error.message, true);
         }
     }
     
     // ========== CEK APAKAH BISA DAFTAR ==========
     async function canRegister(email) {
-        // Cek di deleted_accounts
         const deletedAccountsSnapshot = await db.collection("deleted_accounts").where("email", "==", email).get();
         if (!deletedAccountsSnapshot.empty) {
             const deletedData = deletedAccountsSnapshot.docs[0].data();
@@ -922,7 +904,6 @@
             }
         }
         
-        // Cek di stores (aktif)
         const storesSnapshot = await db.collection("stores").where("email", "==", email).get();
         if (!storesSnapshot.empty) {
             return { allowed: false, reason: "Email sudah terdaftar!" };
@@ -958,8 +939,7 @@
             const uid = userCredential.user.uid;
             
             await db.collection("stores").doc(uid).set({
-                name: name,
-                email: email,
+                name: name, email: email,
                 leftTitle: name,
                 centerTitle: "✨ Selamat Belanja ✨",
                 storeDesc: "Selamat datang di toko kami",
@@ -969,7 +949,6 @@
                 createdAt: new Date()
             });
             
-            // Hapus catatan deleted_accounts jika ada
             const deletedSnapshot = await db.collection("deleted_accounts").where("email", "==", email).get();
             deletedSnapshot.forEach(async (doc) => {
                 await db.collection("deleted_accounts").doc(doc.id).delete();
@@ -985,19 +964,14 @@
     }
     
     async function canUserLogin(uid, email) {
-        // CEK DAN PERBAIKI AKUN BERMASALAH (Orphan Account)
         const isValid = await checkAndFixOrphanAccount(uid, email);
         if (!isValid) return false;
         
-        // Cek apakah ada di deleted_accounts
         const deletedCheck = await db.collection("deleted_accounts").doc(uid).get();
         if (deletedCheck.exists) return false;
         
-        // Cek apakah data toko masih ada
         const userDoc = await db.collection("stores").doc(uid).get();
         if (!userDoc.exists) return false;
-        
-        // Cek apakah status diblokir
         if (userDoc.data().status === "blocked") return false;
         
         return true;
@@ -1015,12 +989,11 @@
             if (!canLogin) {
                 await auth.signOut();
                 document.getElementById("loginMsg").className = "error-msg";
-                document.getElementById("loginMsg").innerText = "Akun ini telah dihapus atau diblokir oleh Super Admin. Tidak dapat login.";
+                document.getElementById("loginMsg").innerText = "Akun ini telah dihapus atau diblokir.";
                 return;
             }
             
             currentUser = userCredential.user;
-            
             localStorage.setItem("firebase_uid", currentUser.uid);
             localStorage.setItem("firebase_email", currentUser.email);
             
@@ -1028,13 +1001,16 @@
             document.getElementById("adminPanel").style.display = "block";
             document.getElementById("userEmailDisplay").innerText = currentUser.email;
             
+            // Cek apakah Super Admin
             if (currentUser.email === SUPER_ADMIN_EMAIL) {
+                document.getElementById("superAdminBadge").style.display = "inline-block";
                 document.getElementById("superAdminMenuBtn").style.display = "inline-block";
                 await loadAllUsers();
                 await loadDeletedAccounts();
                 switchMenu('users');
                 switchUserTab('active-users');
             } else {
+                document.getElementById("superAdminBadge").style.display = "none";
                 document.getElementById("superAdminMenuBtn").style.display = "none";
                 switchMenu('toko');
             }
@@ -1078,6 +1054,13 @@
         }).catch(() => {
             alert("Link toko Anda:\n" + publicUrl);
         });
+    }
+    
+    function openPreview() { 
+        if(!currentUser) return;
+        const baseUrl = window.location.origin + window.location.pathname.replace('admin.html', '');
+        const publicUrl = `${baseUrl}etalase.html?store=${currentUser.uid}`;
+        window.open(publicUrl, "_blank");
     }
     
     async function loadUserData() {
@@ -1255,7 +1238,7 @@
     function renderProductsTable() {
         const tbody = document.getElementById("productsTableBody");
         if(products.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada produk. Silakan tambah produk baru. <table>' + '</tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada produk. Silakan tambah produk baru. <tr>' + '<tr>';
             return;
         }
         tbody.innerHTML = products.map(p => {
@@ -1286,10 +1269,6 @@
         return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;')); 
     }
     
-    function openPreview() { 
-        window.open("etalase.html", "_blank"); 
-    }
-    
     async function deleteAccount() {
         const password = document.getElementById("confirmPassword").value;
         if(!password) {
@@ -1298,9 +1277,7 @@
             return;
         }
         
-        if(!confirm("⚠️ PERINGATAN AKHIR: Semua produk dan data toko akan HILANG PERMANEN! Anda yakin ingin menghapus akun?")) {
-            return;
-        }
+        if(!confirm("⚠️ PERINGATAN AKHIR: Semua produk dan data toko akan HILANG PERMANEN! Anda yakin ingin menghapus akun?")) return;
         
         try {
             const user = auth.currentUser;
@@ -1308,25 +1285,19 @@
             await user.reauthenticateWithCredential(credential);
             
             await db.collection("stores").doc(user.uid).delete();
-            
             await db.collection("deleted_accounts").doc(user.uid).set({
                 email: user.email,
                 deletedAt: new Date(),
                 canReRegister: false
             });
-            
             await user.delete();
             
             showToast("Akun berhasil dihapus!");
-            
             localStorage.removeItem("firebase_uid");
             localStorage.removeItem("firebase_email");
             localStorage.removeItem("public_store_data");
             
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
-            
+            setTimeout(() => window.location.reload(), 2000);
         } catch(error) {
             if(error.code === 'auth/wrong-password') {
                 document.getElementById("deleteMsg").innerHTML = "Password salah!";
@@ -1370,12 +1341,14 @@
             document.getElementById("userEmailDisplay").innerText = user.email;
             
             if (user.email === SUPER_ADMIN_EMAIL) {
+                document.getElementById("superAdminBadge").style.display = "inline-block";
                 document.getElementById("superAdminMenuBtn").style.display = "inline-block";
                 await loadAllUsers();
                 await loadDeletedAccounts();
                 switchMenu('users');
                 switchUserTab('active-users');
             } else {
+                document.getElementById("superAdminBadge").style.display = "none";
                 document.getElementById("superAdminMenuBtn").style.display = "none";
                 switchMenu('toko');
             }

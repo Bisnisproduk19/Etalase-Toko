@@ -1277,11 +1277,11 @@
             let platformColor = p.platform === 'shopee' ? '#ee4d2d' : (p.platform === 'tiktok' ? '#010101' : '#6366f1');
             return `
                 <tr>
-                    <td><img src="${p.image}" style="width:40px;height:40px;object-fit:cover;border-radius:8px;" onerror="this.src='https://picsum.photos/id/20/40/40'">17d
-                    <td><strong>${escapeHtml(p.name)}</strong>17d
-                    <td>${escapeHtml(p.category)}17d
-                    <td><span style="background:${platformColor}; padding:2px 8px; border-radius:20px; font-size:0.7rem;">${p.platform}</span>17d
-                    <td><button class="btn-edit" onclick="editProduct('${p.id}')">Edit</button> <button class="btn-delete" onclick="deleteProduct('${p.id}')">Hapus</button>17d
+                    <td><img src="${p.image}" style="width:40px;height:40px;object-fit:cover;border-radius:8px;" onerror="this.src='https://picsum.photos/id/20/40/40'">
+                    <td><strong>${escapeHtml(p.name)}</strong>
+                    <td>${escapeHtml(p.category)}
+                    <td><span style="background:${platformColor}; padding:2px 8px; border-radius:20px; font-size:0.7rem;">${p.platform}</span>
+                    <td><button class="btn-edit" onclick="editProduct('${p.id}')">Edit</button> <button class="btn-delete" onclick="deleteProduct('${p.id}')">Hapus</button>
                 </tr>
             `;
         }).join('');
